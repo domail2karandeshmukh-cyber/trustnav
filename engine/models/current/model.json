@@ -1,0 +1,33 @@
+{
+  "model_version": "hybrid-anomaly-20261023-b0fa1a80",
+  "model_type": "isolation_forest + per-feature tail detector",
+  "feature_names": [
+    "derived_speed_mps",
+    "speed_disagreement_mps",
+    "acceleration_mps2",
+    "heading_rate_dps",
+    "route_deviation_m",
+    "satellite_count",
+    "satellite_count_delta",
+    "cn0_mean_dbhz",
+    "cn0_delta_dbhz",
+    "cn0_std_dbhz",
+    "pdop",
+    "pdop_delta",
+    "pseudorange_residual_m",
+    "pseudorange_abs_z",
+    "doppler_delta_hz",
+    "clock_bias_delta_ns",
+    "clock_drift_delta_nsps",
+    "sensor_speed_mismatch_mps",
+    "jamming_indicator"
+  ],
+  "feature_count": 19,
+  "trained_at": "2026-10-23T12:49:29.574916+00:00",
+  "fit_rows": 10785,
+  "calibration_rows": 5630,
+  "training_source": "seeded synthetic normal runs on train routes only: Loire road, Maine road, Briollay loop, Belle-Beille loop, La Roseraie loop, two drone survey areas",
+  "n_estimators": 300,
+  "seed": 20261113,
+  "risk_formula": "risk = 100 * min(1, -log10(p) / 4), p = min(1, 2 * min(p_forest, p_tail))"
+}
