@@ -4,27 +4,36 @@ import { useEffect, useRef, useState } from "react";
 import "maplibre-gl/dist/maplibre-gl.css";
 import type { Frame, Status } from "@/lib/types";
 import { STATUS_HEX } from "@/lib/format";
+import { droneSvg, vehicleSvg } from "./Icons";
 
 export interface MapRoute { id: string; points: [number, number][] }
-export interface MapTrack { id: string; frames: Frame[] }
+export interface MapTrack { id: string; frames: Frame[]; faded?: boolean }
 export interface MapMarker {
-  id: string; label: string; lat: number; lon: number; status: Status;
+  id: string; label: string; lat: number; lon: number; status: Status; heading: number | null;
   kind: "vehicle" | "drone"; alarm?: boolean; selected?: boolean;
 }
+export interface Ghost { lat: number; lon: number; from: [number, number] }
 
 interface Props {
   routes: MapRoute[];
   tracks: MapTrack[];
   markers: MapMarker[];
+  /** simulator ground truth: the path the platform really took */
   truth?: [number, number][];
+  /** where the platform really is, linked to where the receiver says it is */
+  ghost?: Ghost | null;
   fitKey: string;
+  /** extra [lat, lon] points the initial view must include */
+  extent?: [number, number][];
+  focus?: { lat: number; lon: number; key: string } | null;
+  padding?: { top: number; right: number; bottom: number; left: number };
   onMarkerClick?: (id: string) => void;
   note?: string;
 }
 
-// Dark basemap from CARTO (OpenStreetMap data). If it cannot load, the map
+// Light basemap from CARTO (OpenStreetMap data). If it cannot load, the map
 // falls back to plain OpenStreetMap raster tiles so the demo still has streets.
-const STYLE_URL = "https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json";
+const STYLE_URL = "https://basemaps.cartocdn.com/gl/positron-gl-style/style.json";
 const FALLBACK_STYLE: any = {
   version: 8,
   sources: {
@@ -34,8 +43,8 @@ const FALLBACK_STYLE: any = {
     },
   },
   layers: [
-    { id: "bg", type: "background", paint: { "background-color": "#0a1120" } },
-    { id: "osm", type: "raster", source: "osm", paint: { "raster-saturation": -0.9, "raster-brightness-max": 0.45, "raster-contrast": 0.1 } },
+    { id: "bg", type: "background", paint: { "background-color": "#eef0ec" } },
+    { id: "osm", type: "raster", source: "osm", paint: { "raster-saturation": -0.85, "raster-contrast": -0.15, "raster-brightness-min": 0.12 } },
   ],
 };
 
@@ -56,14 +65,14 @@ function trackFeatures(tracks: MapTrack[]) {
     let st: Status | null = null;
     let prev: [number, number] | null = null;
     const flush = () => {
-      if (seg.length > 1 && st) feats.push({ type: "Feature", properties: { color: STATUS_HEX[st], jump: false }, geometry: { type: "LineString", coordinates: seg } });
+      if (seg.length > 1 && st) feats.push({ type: "Feature", properties: { color: STATUS_HEX[st], jump: false, faded: !!t.faded }, geometry: { type: "LineString", coordinates: seg } });
     };
     for (const f of t.frames) {
       if (f.lat == null || f.lon == null) { flush(); seg = []; prev = null; continue; }
       const p: [number, number] = [f.lon, f.lat];
       if (prev && meters([prev[1], prev[0]], [p[1], p[0]]) > JUMP_M) {
         flush();
-        feats.push({ type: "Feature", properties: { color: STATUS_HEX[f.st], jump: true }, geometry: { type: "LineString", coordinates: [prev, p] } });
+        feats.push({ type: "Feature", properties: { color: STATUS_HEX[f.st], jump: true, faded: !!t.faded }, geometry: { type: "LineString", coordinates: [prev, p] } });
         seg = [p];
       } else if (st && f.st !== st) {
         seg.push(p);
@@ -85,17 +94,18 @@ const lineFC = (lines: [number, number][][]) => ({
   features: lines.filter((l) => l.length > 1).map((l) => ({ type: "Feature", properties: {}, geometry: { type: "LineString", coordinates: l.map(([a, b]) => [b, a]) } })),
 });
 
-export default function MapView({ routes, tracks, markers, truth, fitKey, onMarkerClick, note }: Props) {
+export default function MapView({ routes, tracks, markers, truth, ghost, fitKey, extent, focus, padding, onMarkerClick, note }: Props) {
   const box = useRef<HTMLDivElement>(null);
   const mapRef = useRef<any>(null);
   const libRef = useRef<any>(null);
-  const markerRefs = useRef<Map<string, { m: any; el: HTMLDivElement }>>(new Map());
+  const markerRefs = useRef<Map<string, { m: any; el: HTMLDivElement; sig: string }>>(new Map());
+  const ghostRef = useRef<any>(null);
   const [ready, setReady] = useState(false);
-  const [basemapNote, setBasemapNote] = useState<string | null>(null);
+  const [fallback, setFallback] = useState(false);
   const clickRef = useRef(onMarkerClick);
   clickRef.current = onMarkerClick;
+  const pad = padding ?? { top: 40, right: 40, bottom: 40, left: 40 };
 
-  // create the map once
   useEffect(() => {
     let cancelled = false;
     let map: any;
@@ -106,31 +116,33 @@ export default function MapView({ routes, tracks, markers, truth, fitKey, onMark
       let fellBack = false;
       map = new lib.Map({
         container: box.current, style: STYLE_URL, center: [-0.555, 47.47], zoom: 12.6,
-        attributionControl: { compact: true }, cooperativeGestures: false, maxPitch: 0,
+        attributionControl: { compact: true }, maxPitch: 0, dragRotate: false, pitchWithRotate: false,
       });
-      map.addControl(new lib.NavigationControl({ showCompass: false }), "top-right");
+      map.touchZoomRotate.disableRotation();
+      map.addControl(new lib.NavigationControl({ showCompass: false }), "bottom-right");
       const setup = () => {
         if (!map.getSource("routes")) {
           map.addSource("routes", { type: "geojson", data: lineFC([]) });
           map.addSource("truth", { type: "geojson", data: lineFC([]) });
+          map.addSource("link", { type: "geojson", data: lineFC([]) });
           map.addSource("tracks", { type: "geojson", data: { type: "FeatureCollection", features: [] } });
-          map.addLayer({ id: "routes", type: "line", source: "routes", paint: { "line-color": "#6f86b3", "line-width": 2, "line-opacity": 0.75, "line-dasharray": [2, 2] } });
-          map.addLayer({ id: "truth", type: "line", source: "truth", paint: { "line-color": "#e8edf7", "line-width": 1.5, "line-opacity": 0.7, "line-dasharray": [1, 2] } });
-          map.addLayer({ id: "tracks-glow", type: "line", source: "tracks", filter: ["==", ["get", "jump"], false],
-            paint: { "line-color": ["get", "color"], "line-width": 7, "line-opacity": 0.18, "line-blur": 3 }, layout: { "line-cap": "round", "line-join": "round" } });
+          map.addLayer({ id: "routes", type: "line", source: "routes", paint: { "line-color": "#1f5fbf", "line-width": 2, "line-opacity": 0.45, "line-dasharray": [2.5, 2] } });
+          map.addLayer({ id: "truth", type: "line", source: "truth", paint: { "line-color": "#14233b", "line-width": 2, "line-opacity": 0.55, "line-dasharray": [0.6, 1.6] }, layout: { "line-cap": "round" } });
+          map.addLayer({ id: "tracks-case", type: "line", source: "tracks", filter: ["==", ["get", "jump"], false],
+            paint: { "line-color": "#ffffff", "line-width": 6.5, "line-opacity": ["case", ["get", "faded"], 0.5, 0.95] }, layout: { "line-cap": "round", "line-join": "round" } });
           map.addLayer({ id: "tracks", type: "line", source: "tracks", filter: ["==", ["get", "jump"], false],
-            paint: { "line-color": ["get", "color"], "line-width": 3 }, layout: { "line-cap": "round", "line-join": "round" } });
+            paint: { "line-color": ["get", "color"], "line-width": 3.2, "line-opacity": ["case", ["get", "faded"], 0.45, 1] }, layout: { "line-cap": "round", "line-join": "round" } });
           map.addLayer({ id: "jumps", type: "line", source: "tracks", filter: ["==", ["get", "jump"], true],
             paint: { "line-color": ["get", "color"], "line-width": 2, "line-dasharray": [1, 1.5] } });
+          map.addLayer({ id: "link", type: "line", source: "link", paint: { "line-color": "#c2185b", "line-width": 1.6, "line-dasharray": [1.5, 1.2] } });
         }
         setReady(true);
       };
       map.on("load", setup);
       map.on("error", (e: any) => {
-        // style or tiles unreachable before the first load: switch to plain OSM tiles once
         if (!fellBack && !map.isStyleLoaded() && String(e?.error?.message ?? "").length) {
           fellBack = true;
-          setBasemapNote("Fallback basemap");
+          setFallback(true);
           map.setStyle(FALLBACK_STYLE);
           map.once("styledata", setup);
         }
@@ -141,21 +153,22 @@ export default function MapView({ routes, tracks, markers, truth, fitKey, onMark
       cancelled = true;
       markerRefs.current.forEach(({ m }) => m.remove());
       markerRefs.current.clear();
+      ghostRef.current?.remove();
+      ghostRef.current = null;
       map?.remove();
       mapRef.current = null;
     };
   }, []);
 
-  // data layers
   useEffect(() => {
     const map = mapRef.current;
     if (!ready || !map?.getSource("routes")) return;
     map.getSource("routes").setData(lineFC(routes.map((r) => r.points)));
     map.getSource("truth").setData(lineFC(truth ? [truth] : []));
     map.getSource("tracks").setData(trackFeatures(tracks));
-  }, [ready, routes, tracks, truth]);
+    map.getSource("link").setData(lineFC(ghost ? [[ghost.from, [ghost.lat, ghost.lon]]] : []));
+  }, [ready, routes, tracks, truth, ghost]);
 
-  // markers
   useEffect(() => {
     const map = mapRef.current;
     const lib = libRef.current;
@@ -166,41 +179,116 @@ export default function MapView({ routes, tracks, markers, truth, fitKey, onMark
       let entry = markerRefs.current.get(mk.id);
       if (!entry) {
         const el = document.createElement("div");
+        el.setAttribute("role", "button");
+        el.tabIndex = 0;
         el.addEventListener("click", (ev) => { ev.stopPropagation(); clickRef.current?.(mk.id); });
-        const m = new lib.Marker({ element: el, anchor: "left", offset: [-7, 0] }).setLngLat([mk.lon, mk.lat]).addTo(map);
-        entry = { m, el };
+        el.addEventListener("keydown", (ev) => { if (ev.key === "Enter" || ev.key === " ") { ev.preventDefault(); clickRef.current?.(mk.id); } });
+        const m = new lib.Marker({ element: el, anchor: "center" }).setLngLat([mk.lon, mk.lat]).addTo(map);
+        entry = { m, el, sig: "" };
         markerRefs.current.set(mk.id, entry);
       }
       entry.m.setLngLat([mk.lon, mk.lat]);
-      entry.el.className = `marker ${mk.kind === "drone" ? "drone" : ""} ${mk.selected ? "sel" : ""} ${mk.alarm ? "alarm" : ""}`;
-      entry.el.style.color = STATUS_HEX[mk.status];
-      entry.el.setAttribute("aria-label", `${mk.label}, ${mk.status.toLowerCase()}`);
-      entry.el.innerHTML = `<i></i><b>${mk.label}</b>`;
+      const color = STATUS_HEX[mk.status];
+      const heading = Math.round(mk.heading ?? 0);
+      const sig = `${mk.status}|${heading}|${mk.selected}|${mk.alarm}|${mk.kind}`;
+      if (sig !== entry.sig) {
+        entry.sig = sig;
+        entry.el.className = `mk${mk.selected ? " sel" : ""}${mk.alarm ? " alarm" : ""}`;
+        entry.el.style.setProperty("--c", color);
+        entry.el.style.zIndex = mk.selected ? "3" : mk.alarm ? "2" : "1";
+        entry.el.setAttribute("aria-label", `${mk.label}, ${mk.status.toLowerCase()}`);
+        entry.el.innerHTML = `<span class="mk-ring"></span>${mk.kind === "drone" ? droneSvg(color) : vehicleSvg(color, heading)}<span class="mk-tag">${mk.label}</span>`;
+      }
     }
     markerRefs.current.forEach((entry, id) => {
       if (!seen.has(id)) { entry.m.remove(); markerRefs.current.delete(id); }
     });
   }, [ready, markers]);
 
-  // fit to the scene when it changes identity (new scenario, new run)
   useEffect(() => {
     const map = mapRef.current;
     const lib = libRef.current;
     if (!ready || !map || !lib) return;
+    if (!ghost) { ghostRef.current?.remove(); ghostRef.current = null; return; }
+    if (!ghostRef.current) {
+      const el = document.createElement("div");
+      el.className = "ghost";
+      el.innerHTML = `<span></span><b>Real position</b>`;
+      ghostRef.current = new lib.Marker({ element: el, anchor: "center" }).setLngLat([ghost.lon, ghost.lat]).addTo(map);
+    }
+    ghostRef.current.setLngLat([ghost.lon, ghost.lat]);
+  }, [ready, ghost]);
+
+  // fitting a hidden (zero-size) map produces NaN coordinates, so wait until it is visible
+  const visible = () => {
+    const el = box.current;
+    return !!el && el.clientWidth > pad.left + pad.right + 20 && el.clientHeight > pad.top + pad.bottom + 20;
+  };
+  const pendingFit = useRef(false);
+  const userMoved = useRef(false);
+  const fitted = useRef(false);
+  const lastSize = useRef("");
+  const doFit = (animate = true) => {
+    const map = mapRef.current;
+    const lib = libRef.current;
+    if (!map || !lib) return;
+    if (!visible()) { pendingFit.current = true; return; }
+    pendingFit.current = false;
     const pts: [number, number][] = [];
-    routes.forEach((r) => r.points.forEach(([a, b]) => pts.push([b, a])));
-    markers.forEach((m) => pts.push([m.lon, m.lat]));
+    routesRef.current.forEach((r) => r.points.forEach(([a, b]) => pts.push([b, a])));
+    markersRef.current.forEach((m) => pts.push([m.lon, m.lat]));
+    tracksRef.current.forEach((t) => t.frames.forEach((f) => { if (f.lat != null && f.lon != null) pts.push([f.lon, f.lat]); }));
+    extentRef.current?.forEach(([a, b]) => pts.push([b, a]));
     if (!pts.length) return;
     const b = new lib.LngLatBounds(pts[0], pts[0]);
     pts.forEach((p) => b.extend(p));
-    map.fitBounds(b, { padding: 48, duration: 600, maxZoom: 15.5 });
+    map.fitBounds(b, { padding: pad, duration: animate && fitted.current ? 700 : 0, maxZoom: 15.5 });
+    fitted.current = true;
+  };
+  const routesRef = useRef(routes); routesRef.current = routes;
+  const markersRef = useRef(markers); markersRef.current = markers;
+  const tracksRef = useRef(tracks); tracksRef.current = tracks;
+  const extentRef = useRef(extent); extentRef.current = extent;
+
+  useEffect(() => {
+    if (!ready) return;
+    userMoved.current = false;
+    doFit();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ready, fitKey]);
 
+  useEffect(() => {
+    if (!ready || !box.current) return;
+    const map = mapRef.current;
+    const touched = (e: any) => { if (e?.originalEvent) userMoved.current = true; };
+    map?.on("movestart", touched);
+    let t: ReturnType<typeof setTimeout> | undefined;
+    const ro = new ResizeObserver(() => {
+      const el = box.current;
+      if (!el || !visible()) return;
+      const size = `${el.clientWidth}x${el.clientHeight}`;
+      if (size === lastSize.current) return;
+      lastSize.current = size;
+      mapRef.current?.resize();
+      clearTimeout(t);
+      t = setTimeout(() => { if (pendingFit.current || !userMoved.current) doFit(false); }, 150);
+    });
+    ro.observe(box.current);
+    return () => { ro.disconnect(); clearTimeout(t); map?.off("movestart", touched); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ready]);
+
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!ready || !map || !focus || !visible()) return;
+    map.easeTo({ center: [focus.lon, focus.lat], zoom: Math.max(map.getZoom(), 14.2), padding: pad, duration: 700 });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ready, focus?.key]);
+
   return (
     <div className="mapbox">
-      <div ref={box} className="map" role="region" aria-label="Map of tracked devices" />
-      {(note || basemapNote) && <div className="map-note">{[note, basemapNote].filter(Boolean).join(" · ")}</div>}
+      <div ref={box} className="map" role="region" aria-label="Map of tracked platforms" />
+      {(note || fallback) && <div className="map-note">{note ?? "Simplified basemap"}</div>}
     </div>
   );
 }

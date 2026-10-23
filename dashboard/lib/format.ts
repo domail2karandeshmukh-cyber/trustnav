@@ -9,10 +9,10 @@ export const STATUS_COLOR: Record<Status, string> = {
 
 /** Hex values for MapLibre paint properties, which cannot read CSS variables. */
 export const STATUS_HEX: Record<Status, string> = {
-  TRUSTED: "#22c98a",
-  DEGRADED: "#e3b341",
-  SUSPICIOUS: "#f08a3c",
-  UNTRUSTED: "#ef4d5e",
+  TRUSTED: "#11865f",
+  DEGRADED: "#c28a00",
+  SUSPICIOUS: "#d4561c",
+  UNTRUSTED: "#c2185b",
 };
 
 export const STATUS_WORD: Record<Status, string> = {
@@ -24,10 +24,10 @@ export const STATUS_WORD: Record<Status, string> = {
 
 export const OSNMA_INFO: Record<Osnma, { word: string; tone: string; help: string }> = {
   verified: { word: "Verified", tone: "var(--trusted)", help: "Galileo navigation data carries valid OSNMA signatures." },
-  pending: { word: "Pending", tone: "var(--ink-dim)", help: "Receiver is still collecting the keys it needs (about 40 s after start)." },
+  pending: { word: "Pending", tone: "var(--ink-2)", help: "Receiver is still collecting the keys it needs (about 40 s after start)." },
   unavailable: { word: "Lost", tone: "var(--degraded)", help: "Authenticated Galileo data disappeared. Ambiguous on its own: buildings can cause it, so can a GPS-only spoofer." },
   failed: { word: "Failed", tone: "var(--untrusted)", help: "Signature check failed: the Galileo data was not signed by Galileo. Strong evidence of forgery." },
-  unknown: { word: "Unknown", tone: "var(--ink-faint)", help: "Receiver does not report OSNMA. Never treated as a failure." },
+  unknown: { word: "Unknown", tone: "var(--ink-3)", help: "Receiver does not report OSNMA. Never treated as a failure." },
 };
 
 export const ATTACK_WORD: Record<string, string> = {
@@ -82,4 +82,15 @@ export function mmss(seconds: number) {
   const m = Math.floor(seconds / 60);
   const s = Math.floor(seconds % 60);
   return `${m}:${String(s).padStart(2, "0")}`;
+}
+
+export function statusOf(trust: number): import("./types").Status {
+  return trust >= 75 ? "TRUSTED" : trust >= 50 ? "DEGRADED" : trust >= 25 ? "SUSPICIOUS" : "UNTRUSTED";
+}
+
+/** "4 s", "2 min 05 s" */
+export function span(seconds: number) {
+  const s = Math.max(0, Math.round(seconds));
+  if (s < 60) return `${s} s`;
+  return `${Math.floor(s / 60)} min ${String(s % 60).padStart(2, "0")} s`;
 }
