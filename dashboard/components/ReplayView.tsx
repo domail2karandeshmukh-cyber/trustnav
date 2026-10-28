@@ -1,9 +1,10 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import MapView from "./MapView";
+import MapView, { type CameraApi } from "./MapView";
+import { storyFor, type Beat } from "@/lib/story";
 import { ChartKey, Evidence, OsnmaLine, Signals, TrustChart, TrustFigure, TrustTape, type Bracket } from "./Instruments";
-import { DroneGlyph, IconBack, IconPause, IconPlay, VehicleGlyph } from "./Icons";
+import { DroneGlyph, IconBack, IconClose, IconPause, IconPlay, IconStory, VehicleGlyph } from "./Icons";
 import type { Frame, ReplayData, Scenario } from "@/lib/types";
 import { ATTACK_WORD, STATUS_COLOR, mmss, span } from "@/lib/format";
 import { useWide } from "@/lib/useWide";
@@ -27,8 +28,11 @@ function meters(a: [number, number], b: [number, number]) {
   return Math.hypot(x, (b[0] - a[0]) * k) * 6371000;
 }
 
-export default function ReplayView({ data, initial, theme, onHandle, onScenario }: { data: ReplayData; initial?: string; theme: Theme; onHandle?: (h: ReplayHandle) => void; onScenario?: (slug: string) => void }) {
+export default function ReplayView({ data, initial, theme, onHandle, onScenario, autoStory }: { data: ReplayData; initial?: string; theme: Theme; onHandle?: (h: ReplayHandle) => void; onScenario?: (slug: string) => void; autoStory?: boolean }) {
   const wide = useWide();
+  const cam = useRef<CameraApi | null>(null);
+  const [story, setStory] = useState<{ beat: number; holding: boolean; done: boolean } | null>(null);
+  const holdTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [slug, setSlug] = useState<string | null>(initial ?? "teleport_spoof");
   const [listOpen, setListOpen] = useState(false);
   const sc = data.scenarios.find((s) => s.slug === slug) ?? data.scenarios[0];
@@ -38,6 +42,8 @@ export default function ReplayView({ data, initial, theme, onHandle, onScenario 
   const [showTruth, setShowTruth] = useState(true);
   const win = useMemo(() => attackWindow(sc), [sc]);
   const result = data.experiments.hybrid.per_scenario.find((p) => p.scenario === sc.slug);
+  const deviceName = sc.profile === "small_uav" ? `Survey drone ${sc.device_id.slice(-2)}` : `Delivery van ${sc.device_id.slice(-2)}`;
+  const beats = useMemo(() => storyFor(sc, data.incidents, deviceName, result?.detection_latency_obs ?? null), [sc, data.incidents, deviceName, result]);
 
   useEffect(() => {
     setI(sc.attack_start != null ? Math.max(0, sc.attack_start - 12) : 0);
@@ -55,6 +61,39 @@ export default function ReplayView({ data, initial, theme, onHandle, onScenario 
 
   const frame = sc.frames[Math.min(i, sc.frames.length - 1)];
   const route = data.routes[sc.route];
+
+  const aim = (beat: Beat, f = frame) => {
+    if (!cam.current) return;
+    if (beat.camera === "wide") cam.current.fit();
+    else if (f.lat != null) cam.current.flyTo({ lat: f.lat, lon: f.lon!, zoom: 16.2, pitch: 58, bearing: f.hdg ?? 0, duration: 1600 });
+  };
+  const startStory = () => {
+    if (holdTimer.current) clearTimeout(holdTimer.current);
+    setRate(2);
+    setI(beats[0].at);
+    setPlaying(false);
+    setStory({ beat: 0, holding: true, done: false });
+    const f0 = sc.frames[beats[0].at];
+    setTimeout(() => aim(beats[0], f0), 50);
+    holdTimer.current = setTimeout(() => { setStory((st) => (st ? { ...st, holding: false } : st)); setPlaying(true); }, beats[0].hold ?? 3000);
+  };
+  const stopStory = () => { if (holdTimer.current) clearTimeout(holdTimer.current); setStory(null); setPlaying(false); cam.current?.fit(); };
+  const startRef = useRef(startStory); startRef.current = startStory;
+  const autoRef = useRef(!!autoStory);
+  useEffect(() => () => { if (holdTimer.current) clearTimeout(holdTimer.current); }, []);
+  // advance beats as the replay reaches them
+  useEffect(() => {
+    if (!story || story.holding || story.done) return;
+    const next = beats[story.beat + 1];
+    if (!next || i < next.at) return;
+    const last = story.beat + 2 >= beats.length;
+    setPlaying(false);
+    setStory({ beat: story.beat + 1, holding: true, done: last });
+    aim(next);
+    if (!last) holdTimer.current = setTimeout(() => { setStory((st) => (st ? { ...st, holding: false } : st)); setPlaying(true); }, next.hold ?? 3000);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [i, story, beats]);
+  const beat = story ? beats[story.beat] : null;
   const shown = useMemo(() => sc.frames.slice(0, i + 1), [sc, i]);
   const truth = useMemo(() => (showTruth && win ? shown.filter((f) => f.s >= win[0] && f.tl).map((f) => f.tl as [number, number]) : undefined), [shown, showTruth, win]);
   const ghost = useMemo(() => {
@@ -98,10 +137,11 @@ export default function ReplayView({ data, initial, theme, onHandle, onScenario 
           <div className="detail">
             <header className="detail-head">
               <button className="iconbtn" onClick={() => { setPlaying(false); setListOpen(true); }} aria-label="All scenarios"><IconBack /></button>
-              <div>
+              <div style={{ flex: 1, minWidth: 0 }}>
                 <h1>{title}</h1>
                 <p>{sub || ATTACK_WORD[sc.attack]}</p>
               </div>
+              <button className="btn sm primary story-btn" onClick={startStory}><IconStory size={15} /> Play the story</button>
             </header>
             <p className="lede">{sc.description}</p>
             <p className="verdict">
@@ -125,7 +165,8 @@ export default function ReplayView({ data, initial, theme, onHandle, onScenario 
       </aside>
 
       <section className="stage-map">
-        <MapView theme={theme} glideMs={playing ? Math.min(950, 1000 / rate) : 0} fitKey={`${sc.slug}${offBy != null && offBy > 1500 ? ":far" : ""}`} routes={route ? [{ id: route.slug, points: route.points }] : []}
+        <MapView theme={theme} glideMs={playing ? Math.min(950, 1000 / rate) : 0} onCamera={(api) => { cam.current = api; if (autoRef.current) { autoRef.current = false; setTimeout(() => startRef.current(), 600); } }}
+          follow={story && beat?.camera === "close" && !story.holding ? sc.device_id : null} fitKey={`${sc.slug}${offBy != null && offBy > 1500 ? ":far" : ""}`} routes={route ? [{ id: route.slug, points: route.points }] : []}
           tracks={[{ id: sc.slug, frames: shown }]} truth={truth} ghost={ghost} extent={extent}
           markers={frame?.lat != null ? [{ id: sc.device_id, label: sc.device_id, lat: frame.lat, lon: frame.lon!, status: frame.st, heading: frame.hdg, kind: sc.profile === "small_uav" ? "drone" : "vehicle", alarm: frame.trust < 50, selected: true }] : []}
           note={frame?.fix === false ? "No position fix" : undefined}
@@ -136,6 +177,24 @@ export default function ReplayView({ data, initial, theme, onHandle, onScenario 
           <span><i className="dash route" />Planned route</span>
           {win && <label className="check"><input type="checkbox" checked={showTruth} onChange={(e) => setShowTruth(e.target.checked)} /><i className="dash truth" />Real path</label>}
         </div>
+        {story && beat && (
+          <div className="caption" role="status" aria-live="polite" key={story.beat}>
+            <div className="caption-dots" aria-hidden="true">{beats.map((_, k) => <i key={k} className={k === story.beat ? "on" : k < story.beat ? "past" : ""} />)}</div>
+            <h3>{beat.title}</h3>
+            <p>{beat.body}</p>
+            <div className="caption-actions">
+              {story.done ? (
+                <>
+                  <button className="btn sm primary" onClick={startStory}>Watch again</button>
+                  <button className="btn sm" onClick={() => { stopStory(); setListOpen(true); }}>Other attacks</button>
+                </>
+              ) : (
+                <button className="btn sm" onClick={() => { if (holdTimer.current) clearTimeout(holdTimer.current); const n = story.beat + 1; if (n >= beats.length) return; setI(beats[n].at); setStory({ beat: n, holding: true, done: n + 1 >= beats.length }); aim(beats[n], sc.frames[beats[n].at]); if (n + 1 < beats.length) holdTimer.current = setTimeout(() => { setStory((st) => (st ? { ...st, holding: false } : st)); setPlaying(true); }, beats[n].hold ?? 3000); }}>Next</button>
+              )}
+              <button className="iconbtn" onClick={stopStory} aria-label="Leave the story"><IconClose size={15} /></button>
+            </div>
+          </div>
+        )}
       </section>
 
       <section className="dock" aria-label="Replay controls">

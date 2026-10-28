@@ -36,6 +36,16 @@ interface Props {
   glideMs?: number;
   /** receives a function that returns the current map as a PNG data URL */
   onSnapshot?: (fn: () => string | null) => void;
+  /** receives camera controls for story mode */
+  onCamera?: (api: CameraApi) => void;
+  /** tilted camera with extruded buildings */
+  cinematic?: boolean;
+}
+
+export interface CameraApi {
+  flyTo: (o: { lat: number; lon: number; zoom?: number; pitch?: number; bearing?: number; duration?: number }) => void;
+  fit: () => void;
+  getView: () => { zoom: number; pitch: number; bearing: number };
 }
 
 // CARTO basemaps (OpenStreetMap data). If one cannot load, the map falls
@@ -121,7 +131,7 @@ const lerpAngle = (a: number, b: number, t: number) => {
 
 interface Anim { from: [number, number]; to: [number, number]; hFrom: number; hTo: number; t0: number; dur: number }
 
-export default function MapView({ routes, tracks, markers, truth, ghost, fitKey, extent, focus, follow, padding, onMarkerClick, note, theme = "light", glideMs = 950, onSnapshot }: Props) {
+export default function MapView({ routes, tracks, markers, truth, ghost, fitKey, extent, focus, follow, padding, onMarkerClick, note, theme = "light", glideMs = 950, onSnapshot, onCamera, cinematic = true }: Props) {
   const box = useRef<HTMLDivElement>(null);
   const mapRef = useRef<any>(null);
   const libRef = useRef<any>(null);
@@ -139,6 +149,23 @@ export default function MapView({ routes, tracks, markers, truth, ghost, fitKey,
 
   const setupLayers = (map: any) => {
     const pal = PALETTE[themeRef.current];
+    try {
+      const src = map.getStyle()?.sources?.carto ? "carto" : null;
+      if (src && !map.getLayer("buildings-3d")) {
+        const dark = themeRef.current === "dark";
+        const before = map.getStyle().layers.find((l: any) => l.type === "symbol")?.id;
+        map.addLayer({
+          id: "buildings-3d", type: "fill-extrusion", source: src, "source-layer": "building", minzoom: 13.5,
+          paint: {
+            "fill-extrusion-color": dark ? "#1b2535" : "#dfe3e8",
+            "fill-extrusion-height": ["coalesce", ["get", "render_height"], 8],
+            "fill-extrusion-base": ["coalesce", ["get", "render_min_height"], 0],
+            "fill-extrusion-opacity": ["interpolate", ["linear"], ["zoom"], 13.5, 0, 14.5, dark ? 0.75 : 0.6],
+            "fill-extrusion-vertical-gradient": true,
+          },
+        }, before);
+      }
+    } catch { /* style without buildings */ }
     if (!map.getSource("routes")) {
       map.addSource("routes", { type: "geojson", data: lineFC([]) });
       map.addSource("truth", { type: "geojson", data: lineFC([]) });
@@ -167,12 +194,16 @@ export default function MapView({ routes, tracks, markers, truth, ghost, fitKey,
       let fellBack = false;
       map = new lib.Map({
         container: box.current, style: STYLES[themeRef.current], center: [-0.555, 47.47], zoom: 12.6,
-        attributionControl: { compact: true }, maxPitch: 0, dragRotate: false, pitchWithRotate: false, fadeDuration: 150,
-        canvasContextAttributes: { preserveDrawingBuffer: true },
+        attributionControl: { compact: true }, maxPitch: 70, pitch: cinematic ? 45 : 0, fadeDuration: 150,
+        canvasContextAttributes: { preserveDrawingBuffer: true, antialias: true },
       });
       onSnapshot?.(() => { try { return map.getCanvas().toDataURL("image/png"); } catch { return null; } });
-      map.touchZoomRotate.disableRotation();
-      map.addControl(new lib.NavigationControl({ showCompass: false }), "bottom-right");
+      map.addControl(new lib.NavigationControl({ showCompass: true, visualizePitch: true }), "bottom-right");
+      onCamera?.({
+        flyTo: (o) => map.flyTo({ center: [o.lon, o.lat], zoom: o.zoom ?? map.getZoom(), pitch: o.pitch ?? map.getPitch(), bearing: o.bearing ?? map.getBearing(), duration: o.duration ?? 1800, essential: true, padding: pad }),
+        fit: () => doFit(true),
+        getView: () => ({ zoom: map.getZoom(), pitch: map.getPitch(), bearing: map.getBearing() }),
+      });
       map.on("load", () => setupLayers(map));
       map.on("error", (e: any) => {
         if (!fellBack && !map.isStyleLoaded() && String(e?.error?.message ?? "").length) {
@@ -327,13 +358,14 @@ export default function MapView({ routes, tracks, markers, truth, ghost, fitKey,
     if (!pts.length) return;
     const b = new lib.LngLatBounds(pts[0], pts[0]);
     pts.forEach((p) => b.extend(p));
-    map.fitBounds(b, { padding: pad, duration: animate && fitted.current ? 700 : 0, maxZoom: 15.5 });
+    map.fitBounds(b, { padding: pad, duration: animate && fitted.current ? 900 : 0, maxZoom: 15.5, pitch: cinematicRef.current ? 40 : 0, bearing: 0 });
     fitted.current = true;
   };
   const routesRef = useRef(routes); routesRef.current = routes;
   const markersRef = useRef(markers); markersRef.current = markers;
   const tracksRef = useRef(tracks); tracksRef.current = tracks;
   const extentRef = useRef(extent); extentRef.current = extent;
+  const cinematicRef = useRef(cinematic); cinematicRef.current = cinematic;
 
   useEffect(() => {
     if (!ready) return;
@@ -366,7 +398,7 @@ export default function MapView({ routes, tracks, markers, truth, ghost, fitKey,
   useEffect(() => {
     const map = mapRef.current;
     if (!ready || !map || !focus || !visible()) return;
-    map.easeTo({ center: [focus.lon, focus.lat], zoom: Math.max(map.getZoom(), 14.2), padding: pad, duration: 700 });
+    map.flyTo({ center: [focus.lon, focus.lat], zoom: Math.max(map.getZoom(), 15), pitch: cinematicRef.current ? 55 : 0, padding: pad, duration: 1400, essential: true });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ready > 0, focus?.key]);
 

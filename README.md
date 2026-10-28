@@ -69,6 +69,8 @@ npm install
 npm run dev
 ```
 
+Opening screen offers a narrated 60-second story of an attack (also `#replay?scenario=teleport_spoof&story=1`, or "Watch the attack" in the search). The map is tilted with 3D buildings; `T` opens the fleet timeline dock.
+
 Keyboard: `1`–`4` switch pages, `⌘K` / `Ctrl K` opens the search, `J`/`K` step through platforms, `Esc` goes back, `F` follows the selected platform, `R` opens its incident report, `D` toggles dark mode, `Space` and the arrow keys drive the replay.
 
 End-to-end checks (every view, interactions, shortcuts, dark mode, phone layout, axe accessibility scan, JS budget):

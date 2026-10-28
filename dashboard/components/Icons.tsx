@@ -51,6 +51,12 @@ export const IconMoon = ({ size, ...p }: P) => (
 export const IconSearch = ({ size, ...p }: P) => (
   <svg {...base(size)} {...p}><circle cx="11" cy="11" r="6.5" /><path d="m16 16 4.5 4.5" /></svg>
 );
+export const IconStory = ({ size, ...p }: P) => (
+  <svg {...base(size)} {...p}><rect x="3" y="5" width="18" height="14" rx="2.5" /><path d="M3 9h18M3 15h18M8 5v14M16 5v14" /></svg>
+);
+export const IconTimeline = ({ size, ...p }: P) => (
+  <svg {...base(size)} {...p}><path d="M4 7h16M4 12h16M4 17h16" /><rect x="6" y="5.5" width="6" height="3" rx="1" fill="currentColor" stroke="none" /><rect x="10" y="10.5" width="8" height="3" rx="1" fill="currentColor" stroke="none" /><rect x="5" y="15.5" width="4" height="3" rx="1" fill="currentColor" stroke="none" /></svg>
+);
 export const IconBell = ({ size, ...p }: P) => (
   <svg {...base(size)} {...p}><path d="M6 16V11a6 6 0 0 1 12 0v5l1.5 2h-15z" /><path d="M10 20.5a2.2 2.2 0 0 0 4 0" /></svg>
 );

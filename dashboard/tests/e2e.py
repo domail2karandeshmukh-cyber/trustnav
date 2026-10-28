@@ -24,7 +24,7 @@ async def page_for(b, w, h, dark=False, tour_done=True):
     pg.on("pageerror", lambda e: errs.append(f"pageerror: {e}"))
     pg.on("console", lambda m: errs.append(m.text) if m.type == "error" and not any(k in m.text for k in IGNORE) else None)
     await pg.goto(BASE + "/#live", wait_until="domcontentloaded")
-    if tour_done: await pg.evaluate("localStorage.setItem('trustnav-tour-done','1')")
+    if tour_done: await pg.evaluate("localStorage.setItem('trustnav-tour-done','1'); sessionStorage.setItem('trustnav-intro-seen','1')")
     if dark: await pg.evaluate("localStorage.setItem('trustnav-theme','dark')")
     await pg.reload(wait_until="domcontentloaded")
     return ctx, pg, errs
@@ -106,6 +106,13 @@ async def main():
         check("method: pipeline figure", await pg.locator(".pipeline > div").count() >= 5)
         await pg.keyboard.press("1"); await pg.wait_for_selector(".row-name")
         await axe(pg, "live")
+        # fleet timeline + system health
+        await pg.keyboard.press("t"); await pg.wait_for_timeout(400)
+        check("live: fleet timeline dock", await pg.locator(".timeline .tl-row").count() >= 5)
+        await pg.keyboard.press("t"); await pg.wait_for_timeout(200)
+        await pg.locator(".strip .src").click(); await pg.wait_for_timeout(200)
+        check("live: system health panel", await pg.locator(".pop.health").count() == 1)
+        await pg.locator('.pop.health button[aria-label="Close"]').click()
         # dark mode toggle
         await pg.keyboard.press("d"); await pg.wait_for_timeout(300)
         check("theme: D toggles dark", await pg.evaluate("document.documentElement.dataset.theme") == "dark")
@@ -130,8 +137,30 @@ async def main():
         check("no console errors (phone)", not errs, "; ".join(errs[:3]))
         await ctx.close()
 
+        # ---- opening screen + story ----
+        ctx, pg, errs = await page_for(b, 1440, 900, tour_done=False)
+        await pg.wait_for_selector(".hero", timeout=15000)
+        check("hero: shows on first visit", await pg.locator(".hero h1").count() == 1)
+        await pg.locator(".hero-btn.primary").click()
+        await pg.wait_for_selector(".caption", timeout=20000)
+        check("story: starts from the opening screen", True)
+        first_title = await pg.locator(".caption h3").inner_text()
+        await pg.wait_for_timeout(12000)
+        later_title = await pg.locator(".caption h3").inner_text()
+        check("story: beats advance on their own", first_title != later_title, f"{first_title} / {later_title}")
+        dots = await pg.locator(".caption-dots i").count()
+        check("story: has several beats", dots >= 4, f"{dots}")
+        pitch = await pg.evaluate("(() => { const c = document.querySelector('.workspace.replay .map canvas'); return c ? 1 : 0 })()")
+        check("story: map present in cinematic mode", pitch == 1)
+        await pg.locator('.caption button[aria-label="Leave the story"]').click()
+        check("story: can leave", await pg.locator(".caption").count() == 0)
+        check("story: no live toast leaked into replay", await pg.locator(".toast").count() == 0)
+        check("no console errors (story)", not errs, "; ".join(errs[:3]))
+        await ctx.close()
+
         # ---- first visit tour ----
         ctx, pg, errs = await page_for(b, 1440, 900, tour_done=False)
+        await pg.evaluate("sessionStorage.setItem('trustnav-intro-seen','1')"); await pg.reload(wait_until="domcontentloaded")
         await pg.wait_for_selector(".tour", timeout=15000)
         check("tour: shows on first visit", True)
         for _ in range(3): await pg.locator(".tour .primary").click(); await pg.wait_for_timeout(150)

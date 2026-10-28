@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState, type Dispatch, type SetStateAction } from "react";
 import MapView from "./MapView";
 import { ChartKey, Evidence, OsnmaLine, Signals, StatusWord, TrustChart, TrustFigure, TrustTape } from "./Instruments";
-import { DroneGlyph, IconBack, IconBell, IconChevron, IconClose, IconKey, IconReport, IconTarget, VehicleGlyph } from "./Icons";
+import { DroneGlyph, IconBack, IconBell, IconChevron, IconClose, IconKey, IconReport, IconTarget, IconTimeline, VehicleGlyph } from "./Icons";
 import Report from "./Report";
 import { useToasts } from "./Toasts";
 import { KEEP, useFleet, type Fleet } from "@/lib/useFleet";
@@ -17,6 +17,9 @@ export interface LiveHandle {
   devices: Device[];
   select: Dispatch<SetStateAction<string | null>>;
   selected: string | null;
+  toggleFollow: () => void;
+  toggleReport: () => void;
+  toggleTimeline: () => void;
 }
 
 const ORDER: Status[] = ["UNTRUSTED", "SUSPICIOUS", "DEGRADED", "TRUSTED"];
@@ -29,10 +32,12 @@ export default function LiveView({ routes, theme, onHandle, visible }: { routes:
   const [filter, setFilter] = useState<"all" | "attention">("all");
   const [alertsOpen, setAlertsOpen] = useState(true);
   const [follow, setFollow] = useState(false);
+  const [timeline, setTimeline] = useState(false);
   const [report, setReport] = useState(false);
   const snap = useRef<(() => string | null) | null>(null);
   const seenInc = useRef<Set<string>>(new Set());
   const seenReady = useRef(false);
+  const visibleRef = useRef(visible); visibleRef.current = visible;
 
   const latest = useMemo(() => {
     const m: Record<string, Frame> = {};
@@ -56,7 +61,13 @@ export default function LiveView({ routes, theme, onHandle, visible }: { routes:
   const selFrames = selected ? fleet.frames[selected] ?? [] : [];
   const sel = selFrames.length ? selFrames[selFrames.length - 1] : null;
 
-  useEffect(() => { onHandle?.({ devices: active, select: setSelected, selected }); }, [active, selected, onHandle]);
+  useEffect(() => { onHandle?.({
+    devices: active, select: setSelected, selected,
+    toggleFollow: () => setFollow((v) => !v),
+    toggleReport: () => setReport((v) => !v && !!selectedRef.current),
+    toggleTimeline: () => setTimeline((v) => !v),
+  }); }, [active, selected, onHandle]);
+  const selectedRef = useRef(selected); selectedRef.current = selected;
 
   // toast when a new incident opens (after the first paint, so a reload does not replay old ones)
   useEffect(() => {
@@ -69,6 +80,7 @@ export default function LiveView({ routes, theme, onHandle, visible }: { routes:
       const k = x.device_id + x.start;
       if (seenInc.current.has(k)) continue;
       seenInc.current.add(k);
+      if (!visibleRef.current) continue;
       const dev = fleet.devices.find((d) => d.id === x.device_id);
       toasts.push({
         id: k, tone: x.severity === "CRITICAL" ? "critical" : "info", ttl: 12000,
@@ -150,7 +162,24 @@ export default function LiveView({ routes, theme, onHandle, visible }: { routes:
             {alertsOpen && <div className="float-body">{alerts}</div>}
           </div>
         )}
-        <StatusStrip fleet={fleet} counts={counts} />
+        {wide && timeline && sorted.length > 0 && (
+          <div className="float timeline" aria-label="Fleet timeline">
+            <div className="timeline-head"><b>Fleet timeline</b><span>Last five minutes, every platform, one cell per second. Brackets are incidents.</span></div>
+            {sorted.map((d) => {
+              const fr = fleet.frames[d.id] ?? [];
+              const last = fr[fr.length - 1];
+              const inc = fleet.incidents.filter((x) => x.device_id === d.id).map((x) => ({ start: x.start, end: x.status === "OPEN" ? last.s : x.end, tone: "incident" as const }));
+              return (
+                <button key={d.id} className={`tl-row${d.id === selected ? " on" : ""}`} onClick={() => setSelected(d.id)}>
+                  <span className="tl-name">{d.name}</span>
+                  <span className="tl-tape"><TrustTape frames={fr} slots={KEEP} first={last.s - (KEEP - 1)} height={9} brackets={inc} /></span>
+                  <span className="tl-trust num" style={{ color: STATUS_COLOR[last.st] }}>{Math.round(last.trust)}</span>
+                </button>
+              );
+            })}
+          </div>
+        )}
+        <StatusStrip fleet={fleet} counts={counts} timeline={timeline} onTimeline={() => setTimeline((v) => !v)} lastFix={Math.max(0, ...Object.values(latest).map((f) => new Date(f.t ?? 0).getTime()))} />
       </section>
       {report && selDev && (
         <Report device={selDev} frames={selFrames} incidents={fleet.incidents.filter((x) => x.device_id === selDev.id)}
@@ -272,12 +301,28 @@ function AlertFeed({ incidents, name, onPick }: { incidents: Incident[]; name: (
   );
 }
 
-function StatusStrip({ fleet, counts }: { fleet: Fleet; counts: Record<Status, number> }) {
+function StatusStrip({ fleet, counts, timeline, onTimeline, lastFix }: { fleet: Fleet; counts: Record<Status, number>; timeline: boolean; onTimeline: () => void; lastFix: number }) {
   const [presenter, setPresenter] = useState(false);
+  const [health, setHealth] = useState(false);
+  const age = lastFix ? Math.max(0, (Date.now() - lastFix) / 1000) : null;
   const label = fleet.source === "live" ? "Live from the cloud" : fleet.source === "loop" ? "Recorded demo, looping" : "Connecting";
   return (
     <div className="float strip">
-      <span className={`src ${fleet.source}`}><i />{label}</span>
+      <button className={`src ${fleet.source}`} onClick={() => setHealth((v) => !v)} aria-expanded={health} title="System health"><i />{label}</button>
+      {health && (
+        <div className="pop health" role="dialog" aria-label="System health">
+          <div className="pop-head"><b>System health</b><button className="iconbtn" onClick={() => setHealth(false)} aria-label="Close"><IconClose size={16} /></button></div>
+          <dl className="facts">
+            <div><dt>Data source</dt><dd>{label}</dd></div>
+            <div><dt>Realtime channel</dt><dd style={{ color: fleet.realtime === "up" ? "var(--trusted)" : fleet.realtime === "down" ? "var(--untrusted)" : undefined }}>{fleet.realtime === "up" ? "Connected" : fleet.realtime === "down" ? "Unreachable" : "Connecting"}</dd></div>
+            <div><dt>Last fix received</dt><dd className="num">{age == null ? "–" : age < 2.5 ? "just now" : `${age.toFixed(0)} s ago`}</dd></div>
+            <div><dt>Platforms reporting</dt><dd className="num">{Object.values(counts).reduce((a, b) => a + b, 0)}</dd></div>
+            <div><dt>Run</dt><dd>{fleet.run ? fleet.run.label : "Recorded demo loop"}</dd></div>
+            {fleet.run?.engine_version && <div><dt>Engine</dt><dd>{fleet.run.engine_version}</dd></div>}
+          </dl>
+          <p>Reads are public and synthetic. Writes need the ingest token or the presenter passcode.</p>
+        </div>
+      )}
       {fleet.source !== "connecting" && <span className="num strip-time">{mmss(fleet.elapsed)}{fleet.duration ? ` / ${mmss(fleet.duration)}` : ""}</span>}
       <span className="strip-counts">
         {ORDER.filter((s) => counts[s] > 0).map((s) => (
@@ -285,6 +330,7 @@ function StatusStrip({ fleet, counts }: { fleet: Fleet; counts: Record<Status, n
         ))}
       </span>
       <span className="strip-note">Attacks are simulated</span>
+      <button className={`iconbtn${timeline ? " on" : ""}`} onClick={onTimeline} aria-pressed={timeline} aria-label="Fleet timeline" title="Fleet timeline (T)"><IconTimeline size={18} /></button>
       <button className="iconbtn" onClick={() => setPresenter((v) => !v)} aria-expanded={presenter} aria-label="Presenter controls" title="Presenter controls"><IconKey size={18} /></button>
       {presenter && <Presenter running={fleet.source === "live" && fleet.run?.mode === "demo_feed"} onClose={() => setPresenter(false)} />}
     </div>

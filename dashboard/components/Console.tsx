@@ -7,6 +7,7 @@ import ResultsView from "./ResultsView";
 import MethodView from "./MethodView";
 import CommandPalette, { type Command } from "./CommandPalette";
 import Tour, { resetTour } from "./Tour";
+import Hero, { resetHero } from "./Hero";
 import { ToastProvider } from "./Toasts";
 import { IconLive, IconMethod, IconMoon, IconReplay, IconResults, IconSearch, IconSun, Wordmark } from "./Icons";
 import type { ReplayData, RouteGeom } from "@/lib/types";
@@ -37,7 +38,9 @@ export default function Console() {
   const [replay, setReplay] = useState<ReplayData | null>(null);
   const [replayErr, setReplayErr] = useState<string | null>(null);
   const [scenario, setScenario] = useState<string | undefined>();
+  const [autoStory, setAutoStory] = useState(false);
   const [palette, setPalette] = useState(false);
+  const [tourOk, setTourOk] = useState(false);
   const { theme, toggle } = useTheme();
   const live = useRef<LiveHandle | null>(null);
   const replayH = useRef<ReplayHandle | null>(null);
@@ -50,8 +53,10 @@ export default function Console() {
       const [h, q] = window.location.hash.slice(1).split("?");
       const v = (ALIAS[h] ?? h) as View;
       if (NAV.some(([k]) => k === v)) setView(v);
-      const sc = new URLSearchParams(q ?? "").get("scenario");
+      const params = new URLSearchParams(q ?? "");
+      const sc = params.get("scenario");
       if (sc) setScenario(sc);
+      if (params.get("story")) setAutoStory(true);
     };
     apply();
     window.addEventListener("hashchange", apply);
@@ -66,7 +71,7 @@ export default function Console() {
     if (window.location.hash !== h) history.replaceState(null, "", h);
   }, [view, replay, replayErr, scenario]);
 
-  const openScenario = useCallback((slug: string) => { setScenario(slug); setView("replay"); }, []);
+  const openScenario = useCallback((slug: string, story = false) => { setScenario(slug); setAutoStory(story); setView("replay"); }, []);
   const onLive = useCallback((h: LiveHandle) => {
     live.current = h;
     setDevices((d) => (d.length === h.devices.length && d.every((x, i) => x.id === h.devices[i].id) ? d : h.devices));
@@ -84,8 +89,10 @@ export default function Console() {
       id: `sc-${s.slug}`, group: "Recorded scenarios", title: s.name.split(":")[0], hint: s.name.split(":")[1]?.trim(), keywords: s.attack,
       run: () => openScenario(s.slug),
     }));
+    out.push({ id: "story", group: "Pages", title: "Watch the attack", hint: "narrated story", keywords: "story demo film", run: () => openScenario("teleport_spoof", true) });
     out.push({ id: "theme", group: "Settings", title: theme === "dark" ? "Switch to light mode" : "Switch to dark mode", hint: "D", run: toggle });
     out.push({ id: "tour", group: "Settings", title: "Show the welcome tour again", run: () => { resetTour(); setView("live"); location.reload(); } });
+    out.push({ id: "intro", group: "Settings", title: "Show the opening screen again", run: () => { resetHero(); window.location.hash = "#live"; location.reload(); } });
     return out;
   }, [meta, replay, theme, toggle, openScenario, devices]);
 
@@ -97,6 +104,9 @@ export default function Console() {
     { keys: "3", run: () => setView("results") },
     { keys: "4", run: () => setView("method") },
     { keys: "d", run: toggle },
+    { keys: "f", run: () => { if (view === "live") live.current?.toggleFollow(); } },
+    { keys: "r", run: () => { if (view === "live") live.current?.toggleReport(); } },
+    { keys: "t", run: () => { if (view === "live") live.current?.toggleTimeline(); } },
     { keys: "escape", run: () => { if (palette) setPalette(false); else if (view === "live") live.current?.select(null); } },
     { keys: "space", run: () => { if (view === "replay") replayH.current?.toggle(); } },
     { keys: "arrowleft", run: () => { if (view === "replay") replayH.current?.step(-1); } },
@@ -134,14 +144,15 @@ export default function Console() {
 
         <main className="main">
           <div className="view-live" hidden={view !== "live"}><LiveView routes={routes} theme={theme} onHandle={onLive} visible={view === "live"} /></div>
-          {view === "replay" && (replay ? <ReplayView key={scenario ?? "default"} data={replay} initial={scenario} theme={theme} onHandle={onReplay} onScenario={setScenario} />
+          {view === "replay" && (replay ? <ReplayView key={scenario ?? "default"} data={replay} initial={scenario} theme={theme} onHandle={onReplay} onScenario={setScenario} autoStory={autoStory} />
             : <Loading err={replayErr} what="recorded scenarios" />)}
           {view === "results" && (meta ? <ResultsView meta={meta} replay={replay} onOpen={openScenario} /> : <Loading what="results" />)}
           {view === "method" && (meta ? <MethodView meta={meta} /> : <Loading what="method" />)}
         </main>
 
         <CommandPalette open={palette} onClose={() => setPalette(false)} commands={commands} />
-        {view === "live" && <Tour />}
+        {view === "live" && tourOk && <Tour />}
+        {view === "live" && <Hero onStory={() => openScenario("teleport_spoof", true)} onConsole={() => setTourOk(true)} />}
       </div>
     </ToastProvider>
   );
