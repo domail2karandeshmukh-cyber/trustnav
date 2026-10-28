@@ -7,9 +7,13 @@ import "@fontsource/barlow-semi-condensed/500.css";
 import "@fontsource/barlow-semi-condensed/600.css";
 import "./globals.css";
 
+const description = "Live trust scoring of GNSS positions for vehicle and drone fleets: spoofing and jamming detection with Galileo OSNMA, physical rules and unsupervised anomaly models.";
 export const metadata: Metadata = {
   title: "TrustNav: GNSS trust monitoring",
-  description: "Live trust scoring of GNSS positions for vehicle and drone fleets: spoofing and jamming detection with Galileo OSNMA, rules and unsupervised anomaly models.",
+  description,
+  applicationName: "TrustNav",
+  openGraph: { title: "TrustNav", description, type: "website", siteName: "TrustNav" },
+  twitter: { card: "summary", title: "TrustNav", description },
 };
 
 export const viewport: Viewport = { themeColor: "#ffffff", width: "device-width", initialScale: 1 };

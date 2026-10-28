@@ -69,6 +69,15 @@ npm install
 npm run dev
 ```
 
+Keyboard: `1`–`4` switch pages, `⌘K` / `Ctrl K` opens the search, `J`/`K` step through platforms, `Esc` goes back, `F` follows the selected platform, `R` opens its incident report, `D` toggles dark mode, `Space` and the arrow keys drive the replay.
+
+End-to-end checks (every view, interactions, shortcuts, dark mode, phone layout, axe accessibility scan, JS budget):
+
+```bash
+npm run build && npx next start -p 3100 &
+python3 tests/e2e.py http://localhost:3100
+```
+
 The dashboard reads public, synthetic data only. Writes go through the ingest function (token, stored as a SHA-256 hash) or the presenter controls (passcode, stored as a bcrypt hash, rate-limited).
 
 ## Data sources

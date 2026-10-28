@@ -36,6 +36,21 @@ export const IconKey = ({ size, ...p }: P) => (
 export const IconChevron = ({ size, ...p }: P) => (
   <svg {...base(size)} {...p}><path d="m9.5 6 6 6-6 6" /></svg>
 );
+export const IconTarget = ({ size, ...p }: P) => (
+  <svg {...base(size)} {...p}><circle cx="12" cy="12" r="7" /><circle cx="12" cy="12" r="2" fill="currentColor" stroke="none" /><path d="M12 2v3M12 19v3M2 12h3M19 12h3" /></svg>
+);
+export const IconReport = ({ size, ...p }: P) => (
+  <svg {...base(size)} {...p}><path d="M6 3h8l4 4v14H6z" /><path d="M14 3v4h4M9 12h6M9 15.5h6M9 8.5h2" /></svg>
+);
+export const IconSun = ({ size, ...p }: P) => (
+  <svg {...base(size)} {...p}><circle cx="12" cy="12" r="4" /><path d="M12 2.5v2.5M12 19v2.5M2.5 12H5M19 12h2.5M5.3 5.3l1.8 1.8M16.9 16.9l1.8 1.8M5.3 18.7l1.8-1.8M16.9 7.1l1.8-1.8" /></svg>
+);
+export const IconMoon = ({ size, ...p }: P) => (
+  <svg {...base(size)} {...p}><path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z" /></svg>
+);
+export const IconSearch = ({ size, ...p }: P) => (
+  <svg {...base(size)} {...p}><circle cx="11" cy="11" r="6.5" /><path d="m16 16 4.5 4.5" /></svg>
+);
 export const IconBell = ({ size, ...p }: P) => (
   <svg {...base(size)} {...p}><path d="M6 16V11a6 6 0 0 1 12 0v5l1.5 2h-15z" /><path d="M10 20.5a2.2 2.2 0 0 0 4 0" /></svg>
 );

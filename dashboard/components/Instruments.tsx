@@ -26,7 +26,7 @@ export function TrustTape({ frames, slots, first = 0, height = 10, cursor, brack
     for (const f of frames) {
       const x = f.s - first;
       if (x < 0 || x >= slots) continue;
-      const c = f.fix === false || f.lat == null ? "#b9c0ca" : STATUS_HEX[f.st];
+      const c = f.fix === false || f.lat == null ? "#8e98a8" : STATUS_HEX[f.st];
       const last = out[out.length - 1];
       if (last && last.c === c && last.x + last.w === x) last.w += 1;
       else out.push({ x, w: 1, c });
@@ -60,7 +60,7 @@ export function TrustTape({ frames, slots, first = 0, height = 10, cursor, brack
           </span>
         ))}
         <svg viewBox={`0 0 ${slots} 1`} preserveAspectRatio="none" style={{ height }} shapeRendering="crispEdges">
-          <rect x="0" y="0" width={slots} height="1" fill="#e9ecef" />
+          <rect x="0" y="0" width={slots} height="1" style={{ fill: "var(--tape-empty)" }} />
           {runs.map((r) => <rect key={r.x} x={r.x} y="0" width={r.w + 0.02} height="1" fill={r.c} />)}
         </svg>
         {cursor != null && <span className="tape-cursor" style={{ left: `calc(${pct(cursor)} + ${50 / slots}%)` }} />}
@@ -197,12 +197,12 @@ export function TrustChart({ frames, slots, first = 0, cursor, attack, onSeek, h
       onClick={(e) => { const s = pick(e.clientX); if (s != null) onSeek?.(s); }}>
       <svg viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none" style={{ height: H }} role="img" aria-label="Trust score and risk over time">
         {attack && <rect x={x(attack[0]) - W / n / 2} y={0} width={Math.max(0, x(Math.min(attack[1], first + n - 1)) - x(attack[0]) + W / n)} height={H} fill="var(--untrusted)" opacity=".07" />}
-        {[75, 50, 25].map((g) => <line key={g} x1={0} x2={W} y1={y(g)} y2={y(g)} stroke={g === 50 ? "#9aa5b4" : "#e3e7ec"} strokeDasharray={g === 50 ? "5 4" : undefined} vectorEffect="non-scaling-stroke" />)}
+        {[75, 50, 25].map((g) => <line key={g} x1={0} x2={W} y1={y(g)} y2={y(g)} stroke={g === 50 ? "var(--ink-3)" : "var(--line-soft)"} strokeDasharray={g === 50 ? "5 4" : undefined} vectorEffect="non-scaling-stroke" />)}
         <path d={paths.ml} stroke="var(--s-ml)" strokeWidth="1.3" fill="none" vectorEffect="non-scaling-stroke" />
         <path d={paths.rule} stroke="var(--s-rule)" strokeWidth="1.3" fill="none" vectorEffect="non-scaling-stroke" />
         <path d={paths.trust} stroke="var(--ink)" strokeWidth="2.2" fill="none" vectorEffect="non-scaling-stroke" strokeLinejoin="round" />
         {cursor != null && <line x1={x(cursor)} x2={x(cursor)} y1={0} y2={H} stroke="var(--chart)" strokeWidth="1.5" vectorEffect="non-scaling-stroke" />}
-        {hover != null && <line x1={x(hover)} x2={x(hover)} y1={0} y2={H} stroke="#9aa5b4" vectorEffect="non-scaling-stroke" />}
+        {hover != null && <line x1={x(hover)} x2={x(hover)} y1={0} y2={H} stroke="var(--ink-3)" vectorEffect="non-scaling-stroke" />}
       </svg>
       <span className="chart-axis" style={{ top: `${(y(50) / H) * 100}%` }}>alert line</span>
       {hf && (

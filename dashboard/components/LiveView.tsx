@@ -1,23 +1,38 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type Dispatch, type SetStateAction } from "react";
 import MapView from "./MapView";
 import { ChartKey, Evidence, OsnmaLine, Signals, StatusWord, TrustChart, TrustFigure, TrustTape } from "./Instruments";
-import { DroneGlyph, IconBack, IconBell, IconChevron, IconClose, IconKey, VehicleGlyph } from "./Icons";
+import { DroneGlyph, IconBack, IconBell, IconChevron, IconClose, IconKey, IconReport, IconTarget, VehicleGlyph } from "./Icons";
+import Report from "./Report";
+import { useToasts } from "./Toasts";
 import { KEEP, useFleet, type Fleet } from "@/lib/useFleet";
 import { supabase } from "@/lib/supabase";
 import type { Device, Frame, Incident, RouteGeom, Status } from "@/lib/types";
 import { STATUS_COLOR, STATUS_WORD, clock, fmt, mmss, span } from "@/lib/format";
 import { useWide } from "@/lib/useWide";
+import type { Theme } from "@/lib/useTheme";
+
+export interface LiveHandle {
+  devices: Device[];
+  select: Dispatch<SetStateAction<string | null>>;
+  selected: string | null;
+}
 
 const ORDER: Status[] = ["UNTRUSTED", "SUSPICIOUS", "DEGRADED", "TRUSTED"];
 
-export default function LiveView({ routes }: { routes: Record<string, RouteGeom> | null }) {
+export default function LiveView({ routes, theme, onHandle, visible }: { routes: Record<string, RouteGeom> | null; theme: Theme; onHandle?: (h: LiveHandle) => void; visible: boolean }) {
   const fleet = useFleet();
   const wide = useWide();
+  const toasts = useToasts();
   const [selected, setSelected] = useState<string | null>(null);
   const [filter, setFilter] = useState<"all" | "attention">("all");
   const [alertsOpen, setAlertsOpen] = useState(true);
+  const [follow, setFollow] = useState(false);
+  const [report, setReport] = useState(false);
+  const snap = useRef<(() => string | null) | null>(null);
+  const seenInc = useRef<Set<string>>(new Set());
+  const seenReady = useRef(false);
 
   const latest = useMemo(() => {
     const m: Record<string, Frame> = {};
@@ -41,6 +56,32 @@ export default function LiveView({ routes }: { routes: Record<string, RouteGeom>
   const selFrames = selected ? fleet.frames[selected] ?? [] : [];
   const sel = selFrames.length ? selFrames[selFrames.length - 1] : null;
 
+  useEffect(() => { onHandle?.({ devices: active, select: setSelected, selected }); }, [active, selected, onHandle]);
+
+  // toast when a new incident opens (after the first paint, so a reload does not replay old ones)
+  useEffect(() => {
+    const open = fleet.incidents.filter((x) => x.status === "OPEN");
+    if (!seenReady.current) {
+      if (fleet.source !== "connecting") { open.forEach((x) => seenInc.current.add(x.device_id + x.start)); seenReady.current = true; }
+      return;
+    }
+    for (const x of open) {
+      const k = x.device_id + x.start;
+      if (seenInc.current.has(k)) continue;
+      seenInc.current.add(k);
+      const dev = fleet.devices.find((d) => d.id === x.device_id);
+      toasts.push({
+        id: k, tone: x.severity === "CRITICAL" ? "critical" : "info", ttl: 12000,
+        title: `${x.severity === "CRITICAL" ? "Critical" : x.severity === "HIGH" ? "High" : "Medium"}: ${incidentTitle(x)}`,
+        body: `${dev?.name ?? x.device_id}, trust fell to ${fmt(x.min_trust, 0)}.`,
+        action: { label: "Show", run: () => setSelected(x.device_id) },
+      });
+    }
+  }, [fleet.incidents, fleet.devices, fleet.source, toasts]);
+
+  // a fresh lap or run: forget the old incident keys
+  useEffect(() => { seenInc.current.clear(); seenReady.current = false; }, [fleet.run?.id, fleet.source]);
+
   const mapRoutes = useMemo(() => {
     const slugs = [...new Set(active.map((d) => d.route_slug).filter(Boolean) as string[])];
     return slugs.filter((s) => routes?.[s]).map((s) => ({ id: s, points: routes![s].points }));
@@ -57,17 +98,23 @@ export default function LiveView({ routes }: { routes: Record<string, RouteGeom>
   const name = (id: string) => fleet.devices.find((d) => d.id === id)?.name ?? id;
 
   const alerts = <AlertFeed incidents={fleet.incidents} name={name} onPick={setSelected} />;
+  const headline = fleet.source === "connecting" ? null
+    : counts.UNTRUSTED + counts.SUSPICIOUS === 0 && counts.DEGRADED === 0 ? `All ${active.length} platforms trusted`
+    : counts.UNTRUSTED > 0 ? `${counts.UNTRUSTED} platform${counts.UNTRUSTED > 1 ? "s" : ""} untrusted: ${sorted.filter((d) => latest[d.id].st === "UNTRUSTED").map((d) => d.name).join(", ")}`
+    : counts.SUSPICIOUS > 0 ? `${counts.SUSPICIOUS} suspicious: ${sorted.filter((d) => latest[d.id].st === "SUSPICIOUS").map((d) => d.name).join(", ")}`
+    : `${counts.DEGRADED} degraded, nothing suspicious`;
 
   return (
     <div className="workspace">
       <aside className="panel" aria-label={selDev ? `${selDev.name} details` : "Fleet"}>
         {selDev ? (
           <DeviceDetail device={selDev} frames={selFrames} incidents={fleet.incidents.filter((x) => x.device_id === selDev.id)}
-            routeName={selDev.route_slug ? routes?.[selDev.route_slug]?.name.split(" (")[0] : undefined} onBack={() => setSelected(null)} />
+            routeName={selDev.route_slug ? routes?.[selDev.route_slug]?.name.split(" (")[0] : undefined} onBack={() => setSelected(null)}
+            follow={follow} onFollow={() => setFollow((v) => !v)} onReport={() => setReport(true)} />
         ) : (
           <>
             <header className="panel-head">
-              <h1>Fleet</h1>
+              <div><h1>Fleet</h1>{headline && <p className="headline" aria-live="polite">{headline}</p>}</div>
               <div className="seg" role="group" aria-label="Filter platforms">
                 <button aria-pressed={filter === "all"} onClick={() => setFilter("all")}>All <span className="num">{sorted.length}</span></button>
                 <button aria-pressed={filter === "attention"} onClick={() => setFilter("attention")}>Needs attention <span className="num">{attention.length}</span></button>
@@ -89,7 +136,8 @@ export default function LiveView({ routes }: { routes: Record<string, RouteGeom>
       </aside>
 
       <section className="stage-map">
-        <MapView fitKey={fitKey} routes={mapRoutes} tracks={tracks} markers={markers} onMarkerClick={setSelected} focus={focus}
+        <MapView fitKey={fitKey} routes={mapRoutes} tracks={tracks} markers={markers} onMarkerClick={setSelected} focus={focus} theme={theme}
+          follow={follow && selected ? selected : null} glideMs={visible ? 950 : 0} onSnapshot={(fn) => { snap.current = fn; }}
           padding={wide ? { top: 40, right: alertsOpen ? 360 : 60, bottom: 90, left: 40 } : { top: 30, right: 30, bottom: 30, left: 30 }} />
         {wide && (
           <div className={`float alerts-float${alertsOpen ? "" : " closed"}`}>
@@ -104,6 +152,11 @@ export default function LiveView({ routes }: { routes: Record<string, RouteGeom>
         )}
         <StatusStrip fleet={fleet} counts={counts} />
       </section>
+      {report && selDev && (
+        <Report device={selDev} frames={selFrames} incidents={fleet.incidents.filter((x) => x.device_id === selDev.id)}
+          mapPng={snap.current?.() ?? null} onClose={() => setReport(false)}
+          source={fleet.source === "live" ? "Live cloud feed" : "Recorded demo"} />
+      )}
     </div>
   );
 }
@@ -142,8 +195,9 @@ function sinceText(frames: Frame[]) {
   return `${STATUS_WORD[last.st]} for ${span(secs)}`;
 }
 
-function DeviceDetail({ device, frames, incidents, routeName, onBack }: {
+function DeviceDetail({ device, frames, incidents, routeName, onBack, follow, onFollow, onReport }: {
   device: Device; frames: Frame[]; incidents: Incident[]; routeName?: string; onBack: () => void;
+  follow: boolean; onFollow: () => void; onReport: () => void;
 }) {
   const f = frames[frames.length - 1] ?? null;
   const first = f ? f.s - (KEEP - 1) : 0;
@@ -152,9 +206,13 @@ function DeviceDetail({ device, frames, incidents, routeName, onBack }: {
     <div className="detail">
       <header className="detail-head">
         <button className="iconbtn" onClick={onBack} aria-label="Back to fleet"><IconBack /></button>
-        <div>
+        <div style={{ flex: 1, minWidth: 0 }}>
           <h1>{device.name}</h1>
           <p>{device.id}, {device.kind === "drone" ? "survey drone" : "road vehicle"}{routeName ? ` on ${routeName}` : ""}</p>
+        </div>
+        <div className="detail-actions">
+          <button className={`iconbtn${follow ? " on" : ""}`} onClick={onFollow} aria-pressed={follow} aria-label="Follow on the map" title={follow ? "Stop following" : "Follow on the map (F)"}><IconTarget size={17} /></button>
+          <button className="iconbtn" onClick={onReport} aria-label="Incident report" title="Incident report (R)"><IconReport size={17} /></button>
         </div>
       </header>
       <TrustFigure frame={f} since={sinceText(frames)} />

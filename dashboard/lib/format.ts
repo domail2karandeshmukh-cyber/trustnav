@@ -10,7 +10,7 @@ export const STATUS_COLOR: Record<Status, string> = {
 /** Hex values for MapLibre paint properties, which cannot read CSS variables. */
 export const STATUS_HEX: Record<Status, string> = {
   TRUSTED: "#11865f",
-  DEGRADED: "#c28a00",
+  DEGRADED: "#c99a00",
   SUSPICIOUS: "#d4561c",
   UNTRUSTED: "#c2185b",
 };

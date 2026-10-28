@@ -1,12 +1,15 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import MapView from "./MapView";
 import { ChartKey, Evidence, OsnmaLine, Signals, TrustChart, TrustFigure, TrustTape, type Bracket } from "./Instruments";
 import { DroneGlyph, IconBack, IconPause, IconPlay, VehicleGlyph } from "./Icons";
 import type { Frame, ReplayData, Scenario } from "@/lib/types";
 import { ATTACK_WORD, STATUS_COLOR, mmss, span } from "@/lib/format";
 import { useWide } from "@/lib/useWide";
+import type { Theme } from "@/lib/useTheme";
+
+export interface ReplayHandle { toggle: () => void; step: (n: number) => void }
 
 function splitName(n: string): [string, string] {
   const i = n.indexOf(":");
@@ -24,7 +27,7 @@ function meters(a: [number, number], b: [number, number]) {
   return Math.hypot(x, (b[0] - a[0]) * k) * 6371000;
 }
 
-export default function ReplayView({ data, initial }: { data: ReplayData; initial?: string }) {
+export default function ReplayView({ data, initial, theme, onHandle, onScenario }: { data: ReplayData; initial?: string; theme: Theme; onHandle?: (h: ReplayHandle) => void; onScenario?: (slug: string) => void }) {
   const wide = useWide();
   const [slug, setSlug] = useState<string | null>(initial ?? "teleport_spoof");
   const [listOpen, setListOpen] = useState(false);
@@ -68,6 +71,15 @@ export default function ReplayView({ data, initial }: { data: ReplayData; initia
     ...incidents.map((x) => ({ start: x.start, end: x.end, tone: "incident" as const, label: "Incident" })),
   ];
   const seek = (s: number) => { setPlaying(false); setI(Math.max(0, Math.min(sc.frames.length - 1, s))); };
+  const seekRef = useRef(seek); seekRef.current = seek;
+  const lenRef = useRef(sc.frames.length); lenRef.current = sc.frames.length;
+  useEffect(() => {
+    onHandle?.({
+      toggle: () => setPlaying((p) => !p),
+      step: (n) => setI((v) => { setPlaying(false); return Math.max(0, Math.min(lenRef.current - 1, v + n)); }),
+    });
+  }, [onHandle]);
+  useEffect(() => { if (slug) onScenario?.(slug); }, [slug, onScenario]);
   const [title, sub] = splitName(sc.name);
   const glyph = sc.profile === "small_uav" ? <DroneGlyph size={20} /> : <VehicleGlyph size={20} />;
 
@@ -113,7 +125,7 @@ export default function ReplayView({ data, initial }: { data: ReplayData; initia
       </aside>
 
       <section className="stage-map">
-        <MapView fitKey={`${sc.slug}${offBy != null && offBy > 1500 ? ":far" : ""}`} routes={route ? [{ id: route.slug, points: route.points }] : []}
+        <MapView theme={theme} glideMs={playing ? Math.min(950, 1000 / rate) : 0} fitKey={`${sc.slug}${offBy != null && offBy > 1500 ? ":far" : ""}`} routes={route ? [{ id: route.slug, points: route.points }] : []}
           tracks={[{ id: sc.slug, frames: shown }]} truth={truth} ghost={ghost} extent={extent}
           markers={frame?.lat != null ? [{ id: sc.device_id, label: sc.device_id, lat: frame.lat, lon: frame.lon!, status: frame.st, heading: frame.hdg, kind: sc.profile === "small_uav" ? "drone" : "vehicle", alarm: frame.trust < 50, selected: true }] : []}
           note={frame?.fix === false ? "No position fix" : undefined}
