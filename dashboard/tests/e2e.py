@@ -96,6 +96,9 @@ async def main():
         t3 = await pg.locator(".dock-time").inner_text()
         check("replay: arrow steps one second", t2 != t3)
         check("replay: real-position ghost or truth path", await pg.locator(".ghost, .legend .truth").count() >= 1)
+        await pg.locator(".workspace.replay .stage-toggle button").nth(1).click(); await pg.wait_for_timeout(800)
+        check("space-time: renders in replay", await pg.locator(".workspace.replay .st canvas").count() == 1)
+        await pg.locator(".workspace.replay .stage-toggle button").nth(0).click(); await pg.wait_for_timeout(300)
         await axe(pg, "replay")
         # results + method
         await pg.keyboard.press("3"); await pg.wait_for_selector(".compare", timeout=15000)
@@ -106,6 +109,12 @@ async def main():
         check("method: pipeline figure", await pg.locator(".pipeline > div").count() >= 5)
         await pg.keyboard.press("1"); await pg.wait_for_selector(".row-name")
         await axe(pg, "live")
+        # space-time view
+        await pg.locator(".view-live .stage-toggle button").nth(1).click(); await pg.wait_for_timeout(800)
+        check("space-time: canvas renders in live", await pg.locator(".view-live .st canvas").count() == 1)
+        painted = await pg.locator(".view-live .st canvas").evaluate("c => { const g = c.getContext('2d'); const d = g.getImageData(0, 0, c.width, c.height).data; let n = 0; for (let i = 0; i < d.length; i += 4 * 97) if (d[i + 3] > 0) n++; return n }")
+        check("space-time: canvas has pixels", painted > 100, f"{painted}")
+        await pg.locator(".view-live .stage-toggle button").nth(0).click(); await pg.wait_for_timeout(300)
         # fleet timeline + system health
         await pg.keyboard.press("t"); await pg.wait_for_timeout(400)
         check("live: fleet timeline dock", await pg.locator(".timeline .tl-row").count() >= 5)

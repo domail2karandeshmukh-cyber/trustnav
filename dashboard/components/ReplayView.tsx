@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import MapView, { type CameraApi } from "./MapView";
+import SpaceTime from "./SpaceTime";
 import { storyFor, type Beat } from "@/lib/story";
 import { ChartKey, Evidence, OsnmaLine, Signals, TrustChart, TrustFigure, TrustTape, type Bracket } from "./Instruments";
 import { DroneGlyph, IconBack, IconClose, IconPause, IconPlay, IconStory, VehicleGlyph } from "./Icons";
@@ -40,6 +41,7 @@ export default function ReplayView({ data, initial, theme, onHandle, onScenario,
   const [playing, setPlaying] = useState(false);
   const [rate, setRate] = useState(4);
   const [showTruth, setShowTruth] = useState(true);
+  const [stage, setStage] = useState<"map" | "st">("map");
   const win = useMemo(() => attackWindow(sc), [sc]);
   const result = data.experiments.hybrid.per_scenario.find((p) => p.scenario === sc.slug);
   const deviceName = sc.profile === "small_uav" ? `Survey drone ${sc.device_id.slice(-2)}` : `Delivery van ${sc.device_id.slice(-2)}`;
@@ -69,6 +71,7 @@ export default function ReplayView({ data, initial, theme, onHandle, onScenario,
   };
   const startStory = () => {
     if (holdTimer.current) clearTimeout(holdTimer.current);
+    setStage("map");
     setRate(2);
     setI(beats[0].at);
     setPlaying(false);
@@ -165,12 +168,24 @@ export default function ReplayView({ data, initial, theme, onHandle, onScenario,
       </aside>
 
       <section className="stage-map">
+        <div className="seg stage-toggle" role="group" aria-label="View">
+          <button aria-pressed={stage === "map"} onClick={() => setStage("map")}>Map</button>
+          <button aria-pressed={stage === "st"} onClick={() => setStage("st")}>Space-time</button>
+        </div>
+        {stage === "st" && (
+          <SpaceTime fitKey={sc.slug} theme={theme} first={0} slots={sc.frames.length} cursor={frame.s} attack={win} autoRotate={!playing}
+            routes={route ? [{ id: route.slug, points: route.points }] : []}
+            tracks={[{ id: sc.device_id, label: sc.device_id, kind: sc.profile === "small_uav" ? "drone" : "vehicle", frames: shown, selected: true,
+              truth: showTruth && win ? sc.frames.slice(0, i + 1).map((f) => (f.tl ?? [f.lat ?? 0, f.lon ?? 0]) as [number, number]) : undefined, truthFrom: win?.[0] }]} />
+        )}
+        <div className="stage-mapwrap" hidden={stage !== "map"}>
         <MapView theme={theme} glideMs={playing ? Math.min(950, 1000 / rate) : 0} onCamera={(api) => { cam.current = api; if (autoRef.current) { autoRef.current = false; setTimeout(() => startRef.current(), 600); } }}
           follow={story && beat?.camera === "close" && !story.holding ? sc.device_id : null} fitKey={`${sc.slug}${offBy != null && offBy > 1500 ? ":far" : ""}`} routes={route ? [{ id: route.slug, points: route.points }] : []}
           tracks={[{ id: sc.slug, frames: shown }]} truth={truth} ghost={ghost} extent={extent}
           markers={frame?.lat != null ? [{ id: sc.device_id, label: sc.device_id, lat: frame.lat, lon: frame.lon!, status: frame.st, heading: frame.hdg, kind: sc.profile === "small_uav" ? "drone" : "vehicle", alarm: frame.trust < 50, selected: true }] : []}
           note={frame?.fix === false ? "No position fix" : undefined}
           padding={wide ? { top: 80, right: 60, bottom: 40, left: 40 } : { top: 76, right: 24, bottom: 24, left: 24 }} />
+        </div>
         <div className="float legend">
           <span className="legend-glyph" style={{ color: STATUS_COLOR[frame.st] }}>{glyph}</span>
           <span>Reported track, coloured by trust</span>

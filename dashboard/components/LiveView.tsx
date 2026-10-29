@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState, type Dispatch, type SetStateAction } from "react";
 import MapView from "./MapView";
+import SpaceTime from "./SpaceTime";
 import { ChartKey, Evidence, OsnmaLine, Signals, StatusWord, TrustChart, TrustFigure, TrustTape } from "./Instruments";
 import { DroneGlyph, IconBack, IconBell, IconChevron, IconClose, IconKey, IconReport, IconTarget, IconTimeline, VehicleGlyph } from "./Icons";
 import Report from "./Report";
@@ -33,6 +34,7 @@ export default function LiveView({ routes, theme, onHandle, visible }: { routes:
   const [alertsOpen, setAlertsOpen] = useState(true);
   const [follow, setFollow] = useState(false);
   const [timeline, setTimeline] = useState(false);
+  const [stage, setStage] = useState<"map" | "st">("map");
   const [report, setReport] = useState(false);
   const snap = useRef<(() => string | null) | null>(null);
   const seenInc = useRef<Set<string>>(new Set());
@@ -148,9 +150,20 @@ export default function LiveView({ routes, theme, onHandle, visible }: { routes:
       </aside>
 
       <section className="stage-map">
+        <div className="seg stage-toggle" role="group" aria-label="View">
+          <button aria-pressed={stage === "map"} onClick={() => setStage("map")}>Map</button>
+          <button aria-pressed={stage === "st"} onClick={() => setStage("st")}>Space-time</button>
+        </div>
+        {stage === "st" && (
+          <SpaceTime fitKey={fitKey} theme={theme} first={Math.max(0, (Math.max(0, ...Object.values(latest).map((f) => f.s))) - (KEEP - 1))} slots={KEEP}
+            routes={mapRoutes} onPick={setSelected}
+            tracks={active.map((d) => ({ id: d.id, label: d.id, kind: d.kind, frames: fleet.frames[d.id] ?? [], selected: d.id === selected, faded: !!selected && d.id !== selected }))} />
+        )}
+        <div className="stage-mapwrap" hidden={stage !== "map"}>
         <MapView fitKey={fitKey} routes={mapRoutes} tracks={tracks} markers={markers} onMarkerClick={setSelected} focus={focus} theme={theme}
-          follow={follow && selected ? selected : null} glideMs={visible ? 950 : 0} onSnapshot={(fn) => { snap.current = fn; }}
+          follow={follow && selected ? selected : null} glideMs={visible && stage === "map" ? 950 : 0} onSnapshot={(fn) => { snap.current = fn; }}
           padding={wide ? { top: 40, right: alertsOpen ? 360 : 60, bottom: 90, left: 40 } : { top: 30, right: 30, bottom: 30, left: 30 }} />
+        </div>
         {wide && (
           <div className={`float alerts-float${alertsOpen ? "" : " closed"}`}>
             <button className="float-head" onClick={() => setAlertsOpen((v) => !v)} aria-expanded={alertsOpen}>
