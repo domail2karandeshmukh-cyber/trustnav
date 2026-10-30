@@ -5,13 +5,21 @@
 > Research prototype, MSc Cybersecurity & Data Science, ESAIP Angers.
 > All attacks are simulated in software. No radio signal is transmitted, jammed or spoofed.
 
+## Documentation
+
+| Document | What it explains |
+|---|---|
+| [docs/OBJECTIVES.md](docs/OBJECTIVES.md) | The problem, what the tool does in real life, who uses it, results and limits |
+| [docs/HOW_IT_WORKS.md](docs/HOW_IT_WORKS.md) | The full pipeline step by step, from receiver observation to dashboard |
+| [docs/CODE_GUIDE.md](docs/CODE_GUIDE.md) | Every file and function, tests, security model, deployment |
+
 ## What it does
 
 ```
 Receiver observation (1 Hz)          position, speed, satellites, C/N0, PDOP, residuals,
         │                            clock, jamming indicator, Galileo OSNMA status, IMU speed
         ▼
-Features (35)                        compared with the last 5 epochs and the assigned route
+Features (36)                        compared with the last 5 epochs and the assigned route
         │
    ┌────┴─────┐
    ▼          ▼
