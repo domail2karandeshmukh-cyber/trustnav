@@ -2,10 +2,23 @@
 
 **Live trust monitoring for GNSS positions.** TrustNav tells a vehicle or drone fleet operator, once per second, whether each position can be trusted, and explains why when it cannot. It detects spoofing and jamming with three layers of evidence: physical rules, unsupervised anomaly models, and Galileo OSNMA authentication.
 
-> Research prototype, MSc Cybersecurity & Data Science, ESAIP Angers.
+> Research prototype, MSc Cybersecurity & Data Science, ESAIP Angers (Group 2).
 > All attacks are simulated in software. No radio signal is transmitted, jammed or spoofed.
 
+**Live demo:** https://trustnav.vercel.app (press `?` for "How to read this screen", `P` for presentation mode)
+
+![The TrustNav console: Delivery van 04 under a Galileo forgery attack over the streets of Angers](docs/images/console-photo.jpg)
+
+## In plain words
+
+- Every second, for each van and drone, TrustNav checks whether its satellite position can be believed and gives it a **score from 0 to 100**, with the reason in everyday language ("the receiver places the van 8.0 km from the road it is actually on").
+- Three kinds of evidence are combined: **physical rules** (a van cannot move 8 km in a second), a **model** that has learned what normal driving looks like (it notices a van 12 m off its road), and **Galileo's own digital signatures** (forged data fails the check).
+- Below 50 it **refuses the position** and tracks the vehicle by its odometer along its route, so dispatch, geofencing or flight control never act on a lie. On the recorded attacks the worst lie an ordinary screen would show is 8.0 km; what TrustNav hands on is never more than 29 m off.
+- Why it is different: existing tools either sit inside one receiver and output a flag with no explanation, or monitor a fixed site. TrustNav gives a fleet operator a per-vehicle, per-second, explained score with a response. Sources in [docs/COMPARISON.md](docs/COMPARISON.md).
+
 ## Documentation
+
+**Start here:** [docs/TrustNav_Technical_Documentation.pdf](docs/TrustNav_Technical_Documentation.pdf), one document with everything below (29 pages, built from this folder with `python3 docs/build_pdf.py`).
 
 | Document | What it explains |
 |---|---|
