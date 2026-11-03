@@ -28,10 +28,17 @@ SECTIONS = [  # (number, title, source markdown, anchor)
     ("6", "Results", None),
     ("7", "How TrustNav differs from what exists today", "COMPARISON.md"),
     ("8", "Roadmap: prevention and improvements", "ROADMAP.md"),
+    ("9", "Safety, legal and ethics", "ETHICS.md"),
     ("A", "Appendix: running the project", None),
 ]
+BRIEF = [  # the four-page version for a reader in a hurry
+    ("1", "Summary", "SUMMARY.md"),
+    ("2", "The console, in plain words", None),
+    ("3", "Results", None),
+    ("4", "What comes next", None),
+]
 LINK_NAMES = {"SUMMARY.md": "section 1", "OBJECTIVES.md": "section 2", "HOW_IT_WORKS.md": "section 3",
-              "CODE_GUIDE.md": "section 5", "COMPARISON.md": "section 7", "ROADMAP.md": "section 8"}
+              "CODE_GUIDE.md": "section 5", "COMPARISON.md": "section 7", "ROADMAP.md": "section 8", "ETHICS.md": "section 9"}
 
 
 def md(text: str) -> str:
@@ -48,7 +55,28 @@ def body_without_title(path: Path) -> str:
     return "\n".join(lines)
 
 
-def console_section() -> str:
+def console_section(brief: bool = False) -> str:
+    figures = """
+<figure class="wide"><img src="images/console-photo.jpg" alt="The live console on the deployed site"><figcaption>Figure 1. The deployed console (trustnav.vercel.app) photographed on 29 October 2026: Delivery van 04 under a Galileo forgery attack, untrusted for 4 minutes, with the forged track in pink over the real streets of Angers.</figcaption></figure>
+<div class="figgrid">
+<figure><img src="images/panel-verdict.png" alt="Vehicle panel with the plain-words verdict"><figcaption>Figure 2. A vehicle's file: the score, the verdict in plain words, the last five minutes, and the evidence.</figcaption></figure>
+<div class="figcol">
+<figure><img src="images/map-protection.png" alt="Map with refused fixes and shields"><figcaption>Figure 3. The response layer on the map: hollow refused fixes, teal shields where the vehicles really are, and the dashed lies ("8.0 km refused"). The basemap is simplified in this test render.</figcaption></figure>
+<figure><img src="images/kpi-strip.png" alt="Fleet KPI strip"><figcaption>Figure 4. Fleet at a glance.</figcaption></figure>
+</div>
+</div>
+""" if brief else """
+<figure class="wide"><img src="images/console-photo.jpg" alt="The live console on the deployed site"><figcaption>Figure 1. The deployed console (trustnav.vercel.app) photographed on 29 October 2026: Delivery van 04 under a Galileo forgery attack, untrusted for 4 minutes, with the forged track in pink over the real streets of Angers. Later versions add the trust rings, shields and plain-words verdicts shown below.</figcaption></figure>
+<div class="figgrid">
+<figure><img src="images/panel-verdict.png" alt="Vehicle panel with the plain-words verdict"><figcaption>Figure 2. A vehicle's file: the score, the verdict in plain words, the last five minutes, and the evidence.</figcaption></figure>
+<div class="figcol">
+<figure><img src="images/map-protection.png" alt="Map with refused fixes and shields"><figcaption>Figure 3. The response layer on the map: hollow refused fixes, teal shields where the vehicles really are, and the dashed lies ("8.0 km refused"). The basemap is simplified in this test render.</figcaption></figure>
+<figure><img src="images/kpi-strip.png" alt="Fleet KPI strip"><figcaption>Figure 4. Fleet at a glance.</figcaption></figure>
+<figure class="half"><img src="images/alerts.png" alt="Alert cards"><figcaption>Figure 5. Alert cards with sparklines, the action taken and acknowledgement.</figcaption></figure>
+</div>
+</div>
+<figure class="wide"><img src="images/guide.png" alt="How to read this screen"><figcaption>Figure 6. "How to read this screen", one keypress away inside the console.</figcaption></figure>
+"""
     return md("""
 The live console is the part a jury member sees first, so this section says what each element means in everyday words. The same text is available inside the console by pressing `?`.
 
@@ -61,18 +89,7 @@ The live console is the part a jury member sees first, so this section says what
 **The three things that go wrong.** *Jamming*: a noise transmitter drowns the satellites and the receiver loses its position; TrustNav keeps an estimate from the odometer, so the screen never goes blank. *Spoofing*: a transmitter imitates the satellites and feeds a false position, either a jump or a slow drift; TrustNav notices the impossible motion, the too-perfect signal or the drift off the road, and refuses the position. *Forgery*: fake Galileo navigation data; Galileo signs its messages (OSNMA), so the signature fails and the forgery is caught within seconds.
 
 **Presentation mode** (key `P`) makes the camera visit every platform, incidents first, with a caption, for a jury room or a wall screen. **Replay** plays ten recorded attacks with a narrated story. **Results** has the numbers. **Method** explains how it decides and how it differs from existing products.
-""") + """
-<figure class="wide"><img src="images/console-photo.jpg" alt="The live console on the deployed site"><figcaption>Figure 1. The deployed console (trustnav.vercel.app) photographed on 29 October 2026: Delivery van 04 under a Galileo forgery attack, untrusted for 4 minutes, with the forged track in pink over the real streets of Angers. Later versions add the trust rings, shields and plain-words verdicts shown below.</figcaption></figure>
-<div class="figgrid">
-<figure><img src="images/panel-verdict.png" alt="Vehicle panel with the plain-words verdict"><figcaption>Figure 2. A vehicle's file: the score, the verdict in plain words, the last five minutes, and the evidence.</figcaption></figure>
-<div class="figcol">
-<figure><img src="images/map-protection.png" alt="Map with refused fixes and shields"><figcaption>Figure 3. The response layer on the map: hollow refused fixes, teal shields where the vehicles really are, and the dashed lies ("8.0 km refused"). The basemap is simplified in this test render.</figcaption></figure>
-<figure><img src="images/kpi-strip.png" alt="Fleet KPI strip"><figcaption>Figure 4. Fleet at a glance.</figcaption></figure>
-<figure class="half"><img src="images/alerts.png" alt="Alert cards"><figcaption>Figure 5. Alert cards with sparklines, the action taken and acknowledgement.</figcaption></figure>
-</div>
-</div>
-<figure class="wide"><img src="images/guide.png" alt="How to read this screen"><figcaption>Figure 6. "How to read this screen", one keypress away inside the console.</figcaption></figure>
-"""
+""") + figures
 
 
 def results_section() -> str:
@@ -132,6 +149,40 @@ Worst spoofing error on an ordinary screen: **{prot['spoofing_worst_reported_err
     return md(text)
 
 
+def results_brief() -> str:
+    ex = META["experiments"]
+    h = ex["hybrid"]
+    prot = META["protection"]
+    text = f"""
+Ten held-out scenarios, {h['support_positive'] + h['support_negative']:,} one-second observations, on routes the model never saw in training. Synthetic data, so an upper bound; the next step is a real receiver.
+
+| | Rules only | Model only | **Combined (TrustNav)** |
+|---|---|---|---|
+| Precision | {ex['rules']['precision']*100:.1f} % | {ex['ml']['precision']*100:.1f} % | **{h['precision']*100:.1f} %** |
+| Recall | {ex['rules']['recall']*100:.1f} % | {ex['ml']['recall']*100:.1f} % | **{h['recall']*100:.1f} %** |
+| False alarm rate | {ex['rules']['false_positive_rate']*100:.2f} % | {ex['ml']['false_positive_rate']*100:.2f} % | **{h['false_positive_rate']*100:.2f} %** |
+| Mean time to detect | {ex['rules']['mean_detection_latency_obs']} s | {ex['ml']['mean_detection_latency_obs']} s | **{h['mean_detection_latency_obs']} s** |
+
+7 of 7 attack types are caught; the stealth drift (Galileo signatures still valid) is caught after 42 s, where a fixed 150 m rule would need about 3.5 minutes.
+
+**What the response layer prevents.** Worst spoofing error an ordinary fleet screen would show: **{prot['spoofing_worst_reported_error_m']:,.0f} m**. Worst error of what TrustNav hands downstream: **{prot['spoofing_worst_protected_error_m']:,.0f} m**. Jamming blank screen: **{prot['jamming_blank_s_without']} s** without, **{prot['jamming_blank_s_with']} s** with.
+"""
+    return md(text)
+
+
+def next_brief() -> str:
+    road = (HERE / "ROADMAP.md").read_text()
+    phase2 = road.split("## Phase 2: real receiver (next two weeks)", 1)[1].split("## Phase 3", 1)[0]
+    text = "**Prevention, honestly.** No software can stop a jammer or a spoofer from transmitting; only antenna hardware mitigates at the radio level. What software can prevent is the damage: a fleet system acting on a false position. That is what the response layer does today.\n\n### Phase 2: real receiver (next two weeks)" + phase2 + """
+### Later
+A vehicle's own odometer as the inertial input; a second antenna on the same vehicle to catch synchronous spoofing; real Galileo OSNMA from raw pages; map matching for vehicles without an assigned route; alerts by e-mail or SMS; drone integration (PX4); a Raspberry Pi edge box.
+
+### Links
+Live demo: https://trustnav.vercel.app · Source and full documentation: https://github.com/domail2karandeshmukh-cyber/trustnav
+"""
+    return md(text)
+
+
 def appendix() -> str:
     readme = (ROOT / "README.md").read_text()
     run = readme.split("## Run the engine", 1)[1]
@@ -152,17 +203,20 @@ Group 2, MSc Cybersecurity and Data Science, ESAIP Angers: Karan Deshmukh, Sudhe
     return md(text)
 
 
-def build() -> Path:
+def build(brief: bool = False) -> Path:
     today = date.today().strftime("%-d %B %Y")
-    toc = "".join(f'<li><a href="#s{n}"><span>{n}</span>{t}</a></li>' for n, t, _ in SECTIONS)
+    sections = BRIEF if brief else SECTIONS
+    toc = "".join(f'<li><a href="#s{n}"><span>{n}</span>{t}</a></li>' for n, t, _ in sections)
     parts = []
-    for n, t, src in SECTIONS:
+    for n, t, src in sections:
         if src:
             html = md(body_without_title(HERE / src))
-        elif n == "4":
-            html = console_section()
-        elif n == "6":
-            html = results_section()
+        elif t.startswith("The console"):
+            html = console_section(brief)
+        elif t == "Results":
+            html = results_brief() if brief else results_section()
+        elif t == "What comes next":
+            html = next_brief()
         else:
             html = appendix()
         parts.append(f'<section id="s{n}" class="sec"><h1><span class="n">{n}</span>{t}</h1>{html}</section>')
@@ -215,6 +269,15 @@ figcaption {{ font-size: 9pt; color: #4a5a72; margin-top: 5px; }}
 .figcol {{ display: flex; flex-direction: column; gap: 12px; }}
 .half img {{ width: 62%; }}
 .footer {{ font-size: 8pt; color: #5f6c84; }}
+.cover.compact {{ height: auto; display: block; padding-bottom: 18px; border-bottom: 2px solid #14233b; margin-bottom: 8px; }}
+.cover.compact h1 {{ font-size: 30pt; }}
+.cover.compact .sub {{ font-size: 12.5pt; }}
+.cover.compact .box {{ margin-top: 14px; padding: 12px 16px; max-width: none; }}
+.cover.compact .facts {{ margin-top: 14px; }}
+.cover.compact .meta {{ margin-top: 14px; font-size: 10pt; line-height: 1.5; }}
+body.brief .sec {{ page-break-before: auto; }}
+body.brief .sec h1 {{ font-size: 17pt; margin-top: 1.2em; }}
+body.brief .figgrid {{ page-break-before: auto; }}
 </style></head><body>
 <div class="cover">
   <div>
@@ -242,11 +305,17 @@ figcaption {{ font-size: 9pt; color: #4a5a72; margin-top: 5px; }}
 <p>Sections 1 and 4 are written for a reader who has never seen the project. Sections 3, 5 and 6 are the technical detail. Section 7 answers "why is this different from what exists?" and section 8 "does it prevent attacks, and how does it improve?".</p></section>
 {''.join(parts)}
 </body></html>"""
+    if brief:
+        page = page.replace('<div class="kicker">Technical documentation</div>', '<div class="kicker">Project brief</div>')
+        # no contents page, sections flow, compact cover
+        page = re.sub(r'<section class="sec toc">.*?</section>', "", page, flags=re.S)
+        page = page.replace('<div class="cover">', '<div class="cover compact">').replace("<body>", '<body class="brief">')
+        page = page.replace("TrustNav technical documentation · Group 2", "TrustNav project brief · Group 2")
     out_html = HERE / "_build.html"
     out_html.write_text(page)
 
     from playwright.sync_api import sync_playwright
-    out_pdf = HERE / "TrustNav_Technical_Documentation.pdf"
+    out_pdf = HERE / ("TrustNav_Project_Brief.pdf" if brief else "TrustNav_Technical_Documentation.pdf")
     with sync_playwright() as p:
         b = p.chromium.launch()
         pg = b.new_page()
@@ -255,12 +324,14 @@ figcaption {{ font-size: 9pt; color: #4a5a72; margin-top: 5px; }}
         pg.pdf(path=str(out_pdf), format="A4", print_background=True, prefer_css_page_size=True, display_header_footer=True,
                header_template="<div></div>",
                footer_template='<div style="width:100%;font:8pt Barlow,Arial,sans-serif;color:#5f6c84;padding:0 16mm;display:flex;justify-content:space-between;">'
-                               '<span>TrustNav technical documentation · Group 2, ESAIP Angers</span><span class="pageNumber"></span></div>')
+                               f'<span>TrustNav {"project brief" if brief else "technical documentation"} · Group 2, ESAIP Angers</span><span class="pageNumber"></span></div>')
         b.close()
     out_html.unlink()
     return out_pdf
 
 
 if __name__ == "__main__":
-    path = build()
-    print(f"wrote {path} ({path.stat().st_size/1e6:.1f} MB)")
+    import sys
+    for brief in ([True] if "--brief" in sys.argv else [False] if "--full" in sys.argv else [False, True]):
+        path = build(brief)
+        print(f"wrote {path} ({path.stat().st_size/1e6:.1f} MB)")
