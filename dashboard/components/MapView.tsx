@@ -22,6 +22,10 @@ interface Props {
   truth?: [number, number][];
   /** where the platform really is, linked to where the receiver says it is */
   ghost?: Ghost | null;
+  /** the response layer's estimate while a fix is refused, one line per hold */
+  protectedPath?: [number, number][][];
+  /** the protected position right now, when a fix is being refused */
+  shield?: { lat: number; lon: number } | null;
   fitKey: string;
   /** extra [lat, lon] points the initial view must include */
   extent?: [number, number][];
@@ -69,8 +73,8 @@ const fallbackStyle = (theme: "light" | "dark"): any => ({
 
 const JUMP_M = 400;
 const PALETTE = {
-  light: { casing: "#ffffff", route: "#1f5fbf", truth: "#14233b", link: "#c2185b" },
-  dark: { casing: "#0f1621", route: "#7fb0ff", truth: "#e8eef8", link: "#ff5c9a" },
+  light: { casing: "#ffffff", route: "#1f5fbf", truth: "#14233b", link: "#c2185b", protect: "#0b8f7d" },
+  dark: { casing: "#0f1621", route: "#7fb0ff", truth: "#e8eef8", link: "#ff5c9a", protect: "#3fd9c0" },
 };
 
 function meters(a: [number, number], b: [number, number]) {
@@ -131,12 +135,13 @@ const lerpAngle = (a: number, b: number, t: number) => {
 
 interface Anim { from: [number, number]; to: [number, number]; hFrom: number; hTo: number; t0: number; dur: number }
 
-export default function MapView({ routes, tracks, markers, truth, ghost, fitKey, extent, focus, follow, padding, onMarkerClick, note, theme = "light", glideMs = 950, onSnapshot, onCamera, cinematic = true }: Props) {
+export default function MapView({ routes, tracks, markers, truth, ghost, protectedPath, shield, fitKey, extent, focus, follow, padding, onMarkerClick, note, theme = "light", glideMs = 950, onSnapshot, onCamera, cinematic = true }: Props) {
   const box = useRef<HTMLDivElement>(null);
   const mapRef = useRef<any>(null);
   const libRef = useRef<any>(null);
   const markerRefs = useRef<Map<string, { m: any; el: HTMLDivElement; icon: HTMLElement | null; sig: string; anim: Anim | null; heading: number }>>(new Map());
   const ghostRef = useRef<any>(null);
+  const shieldRef = useRef<any>(null);
   const [ready, setReady] = useState(0);
   const [fallback, setFallback] = useState(false);
   const clickRef = useRef(onMarkerClick);
@@ -170,6 +175,7 @@ export default function MapView({ routes, tracks, markers, truth, ghost, fitKey,
       map.addSource("routes", { type: "geojson", data: lineFC([]) });
       map.addSource("truth", { type: "geojson", data: lineFC([]) });
       map.addSource("link", { type: "geojson", data: lineFC([]) });
+      map.addSource("protect", { type: "geojson", data: lineFC([]) });
       map.addSource("tracks", { type: "geojson", data: { type: "FeatureCollection", features: [] } });
       map.addLayer({ id: "routes", type: "line", source: "routes", paint: { "line-color": pal.route, "line-width": 2, "line-opacity": 0.5, "line-dasharray": [2.5, 2] } });
       map.addLayer({ id: "truth", type: "line", source: "truth", paint: { "line-color": pal.truth, "line-width": 2, "line-opacity": 0.6, "line-dasharray": [0.6, 1.6] }, layout: { "line-cap": "round" } });
@@ -180,6 +186,8 @@ export default function MapView({ routes, tracks, markers, truth, ghost, fitKey,
       map.addLayer({ id: "jumps", type: "line", source: "tracks", filter: ["==", ["get", "jump"], true],
         paint: { "line-color": ["get", "color"], "line-width": 2, "line-dasharray": [1, 1.5] } });
       map.addLayer({ id: "link", type: "line", source: "link", paint: { "line-color": pal.link, "line-width": 1.6, "line-dasharray": [1.5, 1.2] } });
+      map.addLayer({ id: "protect-case", type: "line", source: "protect", paint: { "line-color": pal.casing, "line-width": 7, "line-opacity": 0.9 }, layout: { "line-cap": "round", "line-join": "round" } });
+      map.addLayer({ id: "protect", type: "line", source: "protect", paint: { "line-color": pal.protect, "line-width": 3.4 }, layout: { "line-cap": "round", "line-join": "round" } });
     }
     setReady((v) => v + 1);
   };
@@ -222,6 +230,8 @@ export default function MapView({ routes, tracks, markers, truth, ghost, fitKey,
       markerRefs.current.clear();
       ghostRef.current?.remove();
       ghostRef.current = null;
+      shieldRef.current?.remove();
+      shieldRef.current = null;
       map?.remove();
       mapRef.current = null;
     };
@@ -246,7 +256,23 @@ export default function MapView({ routes, tracks, markers, truth, ghost, fitKey,
     map.getSource("truth").setData(lineFC(truth ? [truth] : []));
     map.getSource("tracks").setData(trackFeatures(tracks));
     map.getSource("link").setData(lineFC(ghost ? [[ghost.from, [ghost.lat, ghost.lon]]] : []));
-  }, [ready, routes, tracks, truth, ghost]);
+    map.getSource("protect")?.setData(lineFC(protectedPath ?? []));
+  }, [ready, routes, tracks, truth, ghost, protectedPath]);
+
+  // shield marker: the position the response layer hands on while the fix is refused
+  useEffect(() => {
+    const map = mapRef.current, lib = libRef.current;
+    if (!ready || !map || !lib) return;
+    if (!shield) { shieldRef.current?.remove(); shieldRef.current = null; return; }
+    if (!shieldRef.current) {
+      const el = document.createElement("div");
+      el.className = "shield";
+      el.title = "Protected position";
+      el.innerHTML = '<svg width="22" height="24" viewBox="0 0 42 46"><path d="M21 2 L39 9 V22 C39 33 31 41 21 44 C11 41 3 33 3 22 V9 Z"/></svg>';
+      shieldRef.current = new lib.Marker({ element: el, anchor: "center" }).setLngLat([shield.lon, shield.lat]).addTo(map);
+    }
+    shieldRef.current.setLngLat([shield.lon, shield.lat]);
+  }, [ready, shield]);
 
   // animation loop: glide every marker toward its latest fix
   const tick = () => {

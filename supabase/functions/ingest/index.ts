@@ -54,6 +54,7 @@ Deno.serve(async (req) => {
       trust: num(f.trust), status: f.st, rule_risk: num(f.rr), ml_risk: num(f.mr), hybrid_risk: num(f.hr),
       osnma: f.osnma ?? null, fix: f.fix !== false, sats: num(f.sats), speed_mps: num(f.spd), heading_deg: num(f.hdg),
       attack: typeof f.atk === "boolean" ? f.atk : null, attack_kind: f.kind ?? null, features: f.f ?? null, why: f.why ?? null,
+      response: f.resp ?? null,
     }));
     if (frames.length) {
       const { error } = await db.from("frames").upsert(frames, { onConflict: "run_id,device_id,seq", ignoreDuplicates: true });

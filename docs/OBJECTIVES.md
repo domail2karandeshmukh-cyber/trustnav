@@ -44,8 +44,9 @@ TrustNav does not replace the receiver. It sits next to it and acts as a second 
    - *Machine learning*: spots strange combinations that no single rule was written for.
    - *Galileo OSNMA*: cryptographic authentication supplied by the satellites.
 3. **Few false alarms.** An operator who is alerted constantly stops listening. Normal data in our tests produces a false alarm rate of 0.44%.
-4. **Same code for demo and real life.** The demo runs through the exact detector a real receiver would use.
-5. **Safe.** All attacks are simulated in software. No radio signal is ever transmitted.
+4. **Responds, not only reports.** A fix the engine does not believe is refused; the position handed to dispatch, geofencing or flight control is estimated from the odometer along the route, and the operator gets an action: continue, verify or isolate.
+5. **Same code for demo and real life.** The demo runs through the exact detector a real receiver would use, and the receiver adapter already speaks NMEA and u-blox UBX.
+6. **Safe.** All attacks are simulated in software. No radio signal is ever transmitted.
 
 ## Measured results (held-out routes, synthetic data)
 
@@ -58,11 +59,14 @@ TrustNav does not replace the receiver. It sits next to it and acts as a second 
 
 7 of 7 attack types are caught. The numbers are an upper bound, because one simulator produces every data split. Real-world data is the next step.
 
+**What the response layer prevents** (same held-out attacks, error against ground truth): the worst position an ordinary fleet screen would show is **8.0 km** off (teleport spoof); what TrustNav hands on is never more than **29 m** off. During the jamming outage an ordinary screen is blank for **100 s**; TrustNav keeps an estimated position the whole time, within 2 m.
+
 ## Limits (honest)
 
 - Data is **simulated**, not yet from a real receiver.
 - The detector learned from one simulator, so results on real receivers will differ.
-- It detects and explains. It does not yet recover the true position or switch to a backup.
+- It detects, explains and refuses bad fixes. It cannot remove a jammer or a spoofer from the air; only antenna hardware does that.
+- Its estimate during a hold drifts with the odometer (about 3 % of the distance), so long holds need the operator to verify by other means.
 
 ## Next steps (Phase 2)
 

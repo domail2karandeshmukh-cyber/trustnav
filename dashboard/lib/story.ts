@@ -67,6 +67,17 @@ export function storyFor(sc: Scenario, incidents: Incident[], name: string, late
     const m = meters([far.lat!, far.lon!], far.tl!);
     beats.push({ at: far.s, camera: "wide", hold: 4000, title: "Where it really is", body: `The receiver reports the coloured track. The dotted path is where the ${kind} really went: ${dist(m)} apart by now. A driver trusting the screen would be lost.` });
   }
+  // the response layer: what the fleet software is handed while the fix is refused
+  const at = far ?? frames.find((f) => f.s >= (first?.s ?? attack) + 6 && f.resp?.mode === "hold");
+  const held = at && at.resp?.mode === "hold" && at.resp.lat != null ? at : null;
+  if (held) {
+    const r = held.resp!;
+    const err = held.tl ? meters([r.lat!, r.lon!], held.tl) : null;
+    const byWhat = r.source === "route_odometer" ? "along the planned route from the odometer" : "from the odometer on the last trusted heading";
+    beats.push({ at: held.s + 1, camera: "wide", hold: 5000, title: "The fix is refused", body: sc.attack === "jamming"
+      ? `No fix at all, but the solid line keeps going: TrustNav estimates the position ${byWhat}${err != null ? `, within ${dist(err)} of the truth` : ""}. The screen never goes blank.`
+      : `TrustNav does not pass the spoofed fix on. The solid line is what the fleet software receives: an estimate ${byWhat}${err != null ? `, ${dist(err)} from the truth` : ""}${r.gap_m != null ? ` while the receiver insists on a point ${dist(r.gap_m)} away` : ""}. Action: ${r.action === "ISOLATE" ? "isolate this device until it is verified" : "verify before acting"}.` });
+  }
   const rec = frames.find((f) => f.s > attack + 10 && !f.atk && f.trust >= 75);
   if (rec) beats.push({ at: rec.s, camera: "close", hold: 3000, title: "Signal back, trust recovers", body: `The attack ends and the score climbs back above 75. The incident closes on its own after five clean seconds.` });
 

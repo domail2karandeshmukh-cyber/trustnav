@@ -114,6 +114,22 @@ An alert on a single second would flicker. So:
 - Severity comes from the lowest trust reached: below 35 is High, below 20 is Critical.
 - The title leads with the strongest critical evidence, for example "Galileo authentication failed: 40 observations".
 
+## Step 5b: The response layer (`safeguard.py`)
+
+Detection alone leaves the operator looking at a lie, so the score drives a response, the way an intrusion *prevention* system acts on what an intrusion *detection* system finds:
+
+| Trust | Mode | What downstream software receives | Action for the operator |
+|---|---|---|---|
+| 50 or more, no critical rule | **accept** | the GNSS fix, unchanged | CONTINUE |
+| below 50, or no fix | **hold** | an estimate: the last trusted fix advanced by the **odometer speed along the planned route** (a spoofer cannot touch the odometer); without a route, along the last trusted heading | VERIFY (confirm by other means before acting) |
+| below 25, or a critical rule (OSNMA failed, 4× jump) | **hold** | the same estimate | ISOLATE (do not act on this device; a drone holds or returns on inertial navigation, a driver is contacted) |
+
+A hold ends only after **five clean seconds and a fix that rejoins the estimate** (within 60 m plus 3 % of the distance travelled while held), so a spoofer cannot end the hold by looking clean while still far away. After 60 clean seconds it releases anyway and reports the discrepancy, because an odometer estimate drifts too.
+
+Where the route doubles back on itself (the same street in both directions), `Route.project()` uses the direction of travel and continuity to pick the right leg, otherwise the estimate would advance the wrong way.
+
+Measured on the held-out attacks (`protection` in `meta.json`): worst error on an ordinary screen 8,003 m, worst error of what the response layer handed on 29 m; jamming blank screen 100 s without, 0 s with; holds outside attacks 26 s in total over the whole catalogue.
+
 ## Step 6: Send to the cloud (`stream.py` → `supabase/functions/ingest`)
 
 `stream.py` runs the detector in real time (or faster with `--speed`) and posts the results every second to the **ingest Edge Function**:
@@ -124,9 +140,13 @@ An alert on a single second would flicker. So:
 
 The function is the only write path. It checks an `x-trustnav-token` header against a **SHA-256 hash** stored in the database, so the real token is never stored, and it limits sizes and sanitises every field.
 
+### A real receiver instead of the simulator (`receiver.py`)
+
+`python -m trustnav_engine.receiver --port /dev/ttyACM0` reads a GNSS receiver over USB (NMEA sentences GGA, RMC, VTG, GSA, GSV, and u-blox UBX messages NAV-PVT, NAV-CLOCK, NAV-STATUS, NAV-SAT, MON-HW), folds each second into the same observation dictionary the simulator produces, runs the same `Detector`, and posts to the same ingest endpoint. Inputs the receiver does not provide (OSNMA, inertial speed) stay `None` and the engine's `missing_*` flags take over. `--file` replays a saved log, `--jsonl` records everything for later calibration, and `--no-model` runs rules only until the model has been re-calibrated on that receiver's own normal drives. The receiver only listens; nothing is transmitted.
+
 ## Step 7: Storage and security (`supabase/migrations`)
 
-Tables: `devices`, `runs`, `frames`, `incidents`, `ingest_tokens`, `presenter_passcodes`, plus `demo_frames` and `demo_incident_events` for the built-in demo.
+Tables: `devices`, `runs`, `frames` (one row per scored second, including the `response` JSON), `incidents`, `ingest_tokens`, `presenter_passcodes`, plus `demo_frames` and `demo_incident_events` for the built-in demo.
 
 - **Row-level security**: everyone can *read* devices, runs, frames and incidents. Nobody can write except through the ingest function (service role).
 - **Demo feed**: a `pg_cron` job (`demo_tick`) replays a precomputed fleet once per second, so the live demo works with no laptop attached. Starting and stopping it needs a **presenter passcode** (bcrypt-hashed, rate-limited after failed attempts).
@@ -138,9 +158,9 @@ Tables: `devices`, `runs`, `frames`, `incidents`, `ingest_tokens`, `presenter_pa
 
 | View | What it shows |
 |---|---|
-| **Live** | 3D map of the fleet, trust per vehicle, alert feed, device detail with reasons, timeline dock, report export |
-| **Replay** | Ten recorded scenarios with a scrubber and a narrated story mode |
-| **Results** | The evaluation numbers and per-scenario outcomes |
+| **Live** | 3D map of the fleet, trust per vehicle, alert feed, device detail with reasons and the response (accepted / held / isolated), timeline dock, report export |
+| **Replay** | Ten recorded scenarios with a scrubber, the real path, the protected path the response layer handed on, and a narrated story mode |
+| **Results** | The evaluation numbers, per-scenario outcomes, and what the response layer prevented |
 | **Method** | How it works and its limitations |
 | **Space-time** | A 4D view: ground is the map, height is time, each track is a ribbon coloured by trust |
 
@@ -162,9 +182,10 @@ The simulator is deterministic (seeded), so every result can be reproduced exact
 
 ```bash
 cd engine && python -m pip install -r requirements.txt
-python -m pytest -q                       # 9 tests
+python -m pytest -q                       # 23 tests
 python -m trustnav_engine.evaluate        # train + held-out metrics
 python -m trustnav_engine.stream --dry-run --speed 10
+python -m trustnav_engine.receiver --file drive.nmea --speed 0 --dry-run   # a saved receiver log
 
 cd ../dashboard && npm install && npm run dev
 ```

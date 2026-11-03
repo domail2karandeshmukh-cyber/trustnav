@@ -1,7 +1,7 @@
 "use client";
 
 import type { ReplayData } from "@/lib/types";
-import { fmt, pct, span } from "@/lib/format";
+import { dist, fmt, pct, span } from "@/lib/format";
 import { TrustTape } from "./Instruments";
 
 type Meta = Omit<ReplayData, "scenarios" | "routes"> & { scenarios: Omit<ReplayData["scenarios"][number], "frames">[] };
@@ -102,6 +102,47 @@ export default function ResultsView({ meta, replay, onOpen }: { meta: Meta; repl
         </div>
         <p className="note">Times are from attack start to the first alert. The bracket above each strip marks when the simulated attack was active. Open a scenario to replay it.</p>
       </section>
+
+      {meta.protection && (
+        <section>
+          <h2>What the response layer prevents</h2>
+          <p>
+            Detection tells the operator. The response layer acts: a fix below the trust line is refused and the position handed to the fleet
+            software is estimated from the odometer along the planned route instead. Measured against simulator ground truth during each attack:
+            the worst position an ordinary screen would have shown was <b>{dist(meta.protection.spoofing_worst_reported_error_m ?? 0)}</b> off;
+            what the response layer passed on was never more than <b>{dist(meta.protection.spoofing_worst_protected_error_m ?? 0)}</b> off.
+            During jamming the screen would have gone blank for <b>{span(meta.protection.jamming_blank_s_without)}</b>; with the estimate it never did.
+          </p>
+          <div className="scroll-x">
+            <table className="scen">
+              <thead>
+                <tr><th>Scenario</th><th className="num">Ordinary screen<small>worst error</small></th><th className="num hl">With response layer<small>worst error</small></th><th className="num">Hold began<small>after attack start</small></th><th className="num">Held</th><th className="num">False holds</th></tr>
+              </thead>
+              <tbody>
+                {meta.protection.per_scenario.map((p) => {
+                  const s = meta.scenarios.find((x) => x.slug === p.scenario);
+                  const normal = p.attack_observations === 0;
+                  return (
+                    <tr key={p.scenario}>
+                      <td><button className="link" onClick={() => onOpen(p.scenario)}>{s?.name.split(":")[0] ?? p.scenario}</button><small>{s?.name.split(":")[1]?.trim()}</small></td>
+                      <td className="num">{normal ? <span className="muted">normal run</span> : p.reported_blank_s > 0 ? `blank ${span(p.reported_blank_s)}` : dist(p.reported_max_error_m ?? 0)}</td>
+                      <td className="num hl">{normal ? "" : dist(p.protected_max_error_m ?? 0)}</td>
+                      <td className="num">{normal ? "" : p.hold_after_s == null ? "never" : p.hold_after_s === 0 ? "same second" : `${p.hold_after_s} s`}</td>
+                      <td className="num">{p.held_s ? span(p.held_s) : "–"}</td>
+                      <td className="num">{p.false_hold_s ? `${p.false_hold_s} s` : "0"}</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+          <p className="note">
+            A hold costs a few metres of odometer error even when the attack did not move the position (signal anomaly). Holds outside an attack, from a
+            brief dip on a normal run or the seconds after an attack ends before the fix rejoins the estimate, total {span(meta.protection.false_hold_s_total)}
+            over the whole catalogue, each at an error of a few metres. Nothing here touches the radio signal: the protection is in refusing to act on a fix the engine does not believe.
+          </p>
+        </section>
+      )}
 
       <section>
         <h2>Choosing the fusion weights</h2>

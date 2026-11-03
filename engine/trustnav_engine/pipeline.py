@@ -10,6 +10,7 @@ from statistics import median
 from .config import DEFAULT_SETTINGS, PROFILES, Settings
 from .features import FeatureExtractor
 from .rules import Reason, evaluate
+from .safeguard import Safeguard
 
 # features shown in the dashboard's observation panel
 DISPLAY_FEATURES = [
@@ -197,6 +198,7 @@ class Detector:
         self.fx = FeatureExtractor(route, settings.rolling_window, settings.rules.osnma_lost_memory_s)
         self.ml_hist = deque(maxlen=settings.ml_persistence_window)
         self.incidents = IncidentTracker(settings.incidents, device_id, scenario)
+        self.safeguard = Safeguard(route, settings.safeguard)
         self.device_id = device_id
 
     def process(self, o, ml_raw=None, tail_row=None):
@@ -260,5 +262,7 @@ class Detector:
             "f": {k: (None if f[k] is None else round(f[k], 2)) for k in DISPLAY_FEATURES},
             "why": [r.to_dict() for r in reasons[:5]],
         }
+        # response layer: the position downstream systems should use, and what to do
+        frame["resp"] = self.safeguard.update(frame, o)
         events = self.incidents.update(frame)
         return frame, events

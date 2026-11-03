@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState, type Dispatch, type SetStateAction } from "react";
 import MapView from "./MapView";
 import SpaceTime from "./SpaceTime";
-import { ChartKey, Evidence, OsnmaLine, Signals, StatusWord, TrustChart, TrustFigure, TrustTape } from "./Instruments";
+import { ChartKey, Evidence, OsnmaLine, ResponseLine, Signals, StatusWord, TrustChart, TrustFigure, TrustTape } from "./Instruments";
 import { DroneGlyph, IconBack, IconBell, IconChevron, IconClose, IconKey, IconReport, IconTarget, IconTimeline, VehicleGlyph } from "./Icons";
 import Report from "./Report";
 import { useToasts } from "./Toasts";
@@ -269,6 +269,7 @@ function DeviceDetail({ device, frames, incidents, routeName, onBack, follow, on
         <Evidence frame={f} />
       </section>
       <section className="panel-sec"><OsnmaLine status={f?.osnma ?? null} /></section>
+      {f?.resp && <section className="panel-sec"><ResponseLine frame={f} kind={device.kind} /></section>}
       {incidents.length > 0 && (
         <section className="panel-sec">
           <h2>Incidents</h2>

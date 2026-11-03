@@ -9,6 +9,19 @@ export interface Reason {
   detail: string;
 }
 
+/** What the response layer hands downstream for one observation. */
+export interface Response {
+  mode: "accept" | "hold" | "none";
+  lat: number | null;
+  lon: number | null;
+  held_s: number;
+  action: "CONTINUE" | "VERIFY" | "ISOLATE";
+  /** reported fix to protected estimate, metres (the size of the lie being refused) */
+  gap_m: number | null;
+  source: "gnss" | "route_odometer" | "heading_odometer" | null;
+  rejoined_after_s?: number;
+}
+
 /** One scored observation, as the engine emits it. */
 export interface Frame {
   device_id?: string;
@@ -32,6 +45,8 @@ export interface Frame {
   why: Reason[];
   /** simulator ground truth [lat, lon]; replay only */
   tl?: [number, number];
+  /** response layer: protected position and recommended action */
+  resp?: Response;
 }
 
 export interface Incident {
@@ -102,6 +117,36 @@ export interface MethodMetrics {
   }[];
 }
 
+export interface ProtectionRow {
+  scenario: string;
+  label: string;
+  attack: string;
+  attack_observations: number;
+  reported_max_error_m: number | null;
+  reported_mean_error_m: number | null;
+  reported_blank_s: number;
+  protected_max_error_m: number | null;
+  protected_mean_error_m: number | null;
+  protected_blank_s: number;
+  hold_after_s: number | null;
+  held_s: number;
+  false_hold_s: number;
+  actions: Record<"CONTINUE" | "VERIFY" | "ISOLATE", number>;
+}
+
+export interface Protection {
+  per_scenario: ProtectionRow[];
+  spoofing_worst_reported_error_m: number | null;
+  spoofing_worst_protected_error_m: number | null;
+  spoofing_mean_reported_error_m: number | null;
+  spoofing_mean_protected_error_m: number | null;
+  jamming_blank_s_without: number;
+  jamming_blank_s_with: number;
+  false_hold_s_total: number;
+  normal_observations: number;
+  note: string;
+}
+
 export interface ReplayData {
   engine_version: string;
   run_id: string;
@@ -112,6 +157,8 @@ export interface ReplayData {
   route_catalogue: { slug: string; name: string; role: string; profile: string; length_m: number }[];
   incidents: Incident[];
   experiments: Record<"rules" | "ml" | "hybrid", MethodMetrics>;
+  /** response layer evaluation (missing on data from older engines) */
+  protection?: Protection;
   fusion_search: {
     chosen: { rule_weight: number; ml_weight: number };
     grid: { rule_weight: number; ml_weight: number; f1: number; false_positive_rate: number }[];

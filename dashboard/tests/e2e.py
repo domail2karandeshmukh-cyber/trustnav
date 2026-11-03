@@ -34,6 +34,9 @@ async def axe(pg, name):
     r = await pg.evaluate("axe.run(document, {runOnly: ['wcag2a','wcag2aa'], rules: {'color-contrast': {enabled: true}}})")
     serious = [v for v in r["violations"] if v["impact"] in ("serious", "critical")]
     check(f"a11y {name}: no serious violations", not serious, "; ".join(f"{v['id']} ({len(v['nodes'])})" for v in serious))
+    for v in serious:
+        for n in v["nodes"][:3]:
+            print(f"   {v['id']}: {n['target']} {n['html'][:140]}")
     for v in r["violations"]:
         if v["impact"] not in ("serious", "critical"):
             print(f"   note {name}: {v['id']} x{len(v['nodes'])} ({v['impact']})")
@@ -96,6 +99,18 @@ async def main():
         t3 = await pg.locator(".dock-time").inner_text()
         check("replay: arrow steps one second", t2 != t3)
         check("replay: real-position ghost or truth path", await pg.locator(".ghost, .legend .truth").count() >= 1)
+        # response layer: jump into the attack and check the hold is shown
+        for _ in range(14):
+            await pg.keyboard.press("Shift+ArrowRight")
+        await pg.wait_for_timeout(400)
+        for _ in range(60):
+            if await pg.locator(".resp[data-action='ISOLATE'], .resp[data-action='VERIFY']").count():
+                break
+            await pg.keyboard.press("ArrowRight"); await pg.wait_for_timeout(40)
+        check("response: hold shown in the panel", await pg.locator(".resp[data-action='ISOLATE'], .resp[data-action='VERIFY']").count() == 1)
+        check("response: shield marker on the map", await pg.locator(".shield").count() == 1)
+        check("response: protected path in the legend", await pg.locator(".legend .protect").count() == 1)
+        check("response: replay verdict quotes the protection", "response layer" in (await pg.locator(".verdict.protect").inner_text()).lower())
         await pg.locator(".workspace.replay .stage-toggle button").nth(1).click(); await pg.wait_for_timeout(800)
         check("space-time: renders in replay", await pg.locator(".workspace.replay .st canvas").count() == 1)
         await pg.locator(".workspace.replay .stage-toggle button").nth(0).click(); await pg.wait_for_timeout(300)
@@ -104,9 +119,15 @@ async def main():
         await pg.keyboard.press("3"); await pg.wait_for_selector(".compare", timeout=15000)
         check("results: comparison table", await pg.locator(".compare tbody tr").count() >= 6)
         check("results: scenario tapes", await pg.locator(".scen .tape").count() >= 10)
+        prot = await pg.locator("h2:has-text('What the response layer prevents')").count()
+        check("results: protection section", prot == 1)
+        check("results: protection rows", await pg.locator(".scen").nth(1).locator("tbody tr").count() >= 10)
         await axe(pg, "results")
         await pg.keyboard.press("4"); await pg.wait_for_selector(".pipeline")
-        check("method: pipeline figure", await pg.locator(".pipeline > div").count() >= 5)
+        check("method: pipeline figure", await pg.locator(".pipeline > div").count() >= 6)
+        check("method: response section", await pg.locator("h2:has-text('From detection to response')").count() == 1)
+        check("method: comparison table", await pg.locator(".compare.landscape tbody tr").count() == 8)
+        await axe(pg, "method")
         await pg.keyboard.press("1"); await pg.wait_for_selector(".row-name")
         await axe(pg, "live")
         # space-time view

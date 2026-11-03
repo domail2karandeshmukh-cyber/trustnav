@@ -10,4 +10,4 @@ the evidence that explains it. Three layers work together:
 Galileo OSNMA authentication status is evidence for the rules layer.
 """
 
-__version__ = "2.0.0"
+__version__ = "2.1.0"

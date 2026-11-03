@@ -67,8 +67,13 @@ class Route:
                 limits[k] = min(cruise_mps, math.sqrt(lateral_accel_mps2 * radius))
         return s_grid, np.maximum(limits, 1.0)
 
-    def distance_to(self, lat, lon):
-        """Shortest distance in metres from a fix to the route polyline."""
+    @property
+    def is_loop(self):
+        """Closed circuit: the vehicle goes round again instead of stopping at the end."""
+        return haversine_m(*self.points[0], *self.points[-1]) < 60
+
+    def _segments(self, lat, lon):
+        """Per-segment: parameter of the nearest point, distance to it, and segment bearing."""
         px, py = self.frame.to_xy(lat, lon)
         x0, y0, x1, y1 = self.x[:-1], self.y[:-1], self.x[1:], self.y[1:]
         dx, dy = x1 - x0, y1 - y0
@@ -76,7 +81,46 @@ class Route:
         den[den == 0] = 1e-9
         t = np.clip(((px - x0) * dx + (py - y0) * dy) / den, 0.0, 1.0)
         cx, cy = x0 + t * dx, y0 + t * dy
-        return float(np.min(np.hypot(px - cx, py - cy)))
+        d = np.hypot(px - cx, py - cy)
+        brg = (np.degrees(np.arctan2(dx, dy)) + 360.0) % 360.0
+        return t, d, brg
+
+    def distance_to(self, lat, lon):
+        """Shortest distance in metres from a fix to the route polyline."""
+        return float(np.min(self._segments(lat, lon)[1]))
+
+    def project(self, lat, lon, heading=None, near_s=None, tie_m=25.0):
+        """Arc-length position (m) of the matching point on the route, and the distance to it.
+
+        A route that doubles back on itself (an out-and-back street) has two
+        candidate points near one fix. Among segments within `tie_m` of the
+        closest, the direction of travel and continuity with the previous
+        arc-length position break the tie, so dead reckoning along the route
+        advances the right way."""
+        t, d, brg = self._segments(lat, lon)
+        s_all = self.cum[:-1] + t * (self.cum[1:] - self.cum[:-1])
+        best = float(np.min(d))
+        cand = np.flatnonzero(d <= best + tie_m)
+        # neighbouring segments are one candidate place; distant arc positions are rival places
+        order = cand[np.argsort(s_all[cand])]
+        places, cur = [], [order[0]]
+        for a, b in zip(order[:-1], order[1:]):
+            if s_all[b] - s_all[a] > 3 * tie_m:
+                places.append(cur); cur = []
+            cur.append(b)
+        places.append(cur)
+        reps = np.array([p[int(np.argmin(d[p]))] for p in places])
+        if heading is not None and len(reps) > 1:
+            ok = reps[np.abs((brg[reps] - heading + 180.0) % 360.0 - 180.0) <= 60.0]
+            if len(ok):
+                reps = ok
+        if near_s is not None and len(reps) > 1:
+            gap = np.abs(s_all[reps] - near_s)
+            if self.is_loop and self.length_m > 0:
+                gap = np.minimum(gap, self.length_m - gap)
+            reps = reps[[int(np.argmin(gap))]]
+        i = int(reps[np.argmin(d[reps])])
+        return float(s_all[i]), float(d[i])
 
     def to_dict(self, max_points=None):
         pts = self.points

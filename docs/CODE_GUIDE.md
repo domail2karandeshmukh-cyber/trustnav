@@ -9,7 +9,7 @@ trustnav/
 ├── engine/                        Python detection engine
 │   ├── requirements.txt           numpy, scikit-learn, joblib, pytest
 │   ├── models/current/            trained model (model.joblib, model.json) + chosen fusion weights (fusion.json)
-│   ├── tests/test_engine.py       9 automated tests
+│   ├── tests/                     23 automated tests (engine, response layer, receiver adapter)
 │   └── trustnav_engine/
 ├── dashboard/                     Next.js web app
 │   ├── app/                       page shell, global styles, icon
@@ -29,14 +29,16 @@ trustnav/
 |---|---|---|
 | `config.py` | 105 | **All** thresholds and weights in one place so a reviewer can question each one. Platform profiles (`ROAD_VEHICLE`: 60 m/s, 8 m/s², 90 °/s, 250 m jump; `SMALL_UAV`), `RuleSettings`, `FusionSettings`, `TrustBands`, `IncidentSettings` |
 | `geo.py` | 53 | Geodesy helpers: `haversine_m` (distance), `bearing_deg`, `offset`, `angle_diff_deg`, `LocalFrame` (lat/lon to metres) |
-| `routes.py` | 163 | `Route` class: a polyline the vehicle should follow, with distance-to-route. Road routes were computed with OSRM on OpenStreetMap data and stored in `data/routes.json`. Each route has one **role**: train, validation or held-out |
+| `routes.py` | 200 | `Route` class: a polyline the vehicle should follow, with `distance_to()` and `project()` (arc-length position, direction- and continuity-aware where the road doubles back). Road routes were computed with OSRM on OpenStreetMap data and stored in `data/routes.json`. Each route has one **role**: train, validation or held-out |
 | `simulator.py` | 269 | Deterministic synthetic observations (seeded). Normal driving with stops, corners and urban-canyon dips, plus attack overlays: `teleport`, `drift`, `signal`, `stealth_drift`, `osnma_forgery`, `jamming`, `drone_drift`. Every observation carries a ground-truth `attack` label. **Nothing is transmitted** |
 | `scenarios.py` | 95 | Catalogue: `training_specs` (normal only), `validation_specs`, `heldout_specs` (the 10 demo scenarios), `FLEET_DEVICES` and `fleet_specs` (the 7-platform live demo) |
 | `features.py` | 240 | `FeatureExtractor.update(obs)`: 36 features over a 5-observation rolling window, plus context. `MODEL_FEATURES` is the 19 used by the model |
 | `rules.py` | 140 | `evaluate()`: the 15 rules. Returns reasons, rule risk, critical flag. `_severity()` scales 0.5 to 1.0 |
 | `model.py` | 183 | `TailModel` and `AnomalyModel`: Isolation Forest plus tail detector, calibration, `risk_from_p`, `explain()`, `save`/`load` |
-| `pipeline.py` | 264 | `trust_status`, `fuse()` (noisy-OR), `IncidentTracker`, and `Detector.process(obs)` which turns one observation into one scored frame |
-| `evaluate.py` | 203 | Train, pick fusion weights on validation routes, score held-out routes, compute precision, recall, F1, false-alarm rate, detection delay |
+| `pipeline.py` | 270 | `trust_status`, `fuse()` (noisy-OR), `IncidentTracker`, and `Detector.process(obs)` which turns one observation into one scored frame, then asks the response layer what to hand on |
+| `safeguard.py` | 160 | **Response layer.** `Safeguard.update(frame, obs)`: accept / hold / release logic, route-constrained dead reckoning from the odometer, rejoin tolerance, CONTINUE / VERIFY / ISOLATE actions |
+| `receiver.py` | 330 | **Real receiver adapter.** NMEA (GGA, RMC, VTG, GSA, GSV) and UBX (NAV-PVT, NAV-CLOCK, NAV-STATUS, NAV-SAT, MON-HW) parsers, `EpochBuilder` folding one second into one observation, serial port or log file input, `--no-model`, `--jsonl` |
+| `evaluate.py` | 250 | Train, pick fusion weights on validation routes, score held-out routes, compute precision, recall, F1, false-alarm rate, detection delay; `protection_report()` measures reported vs protected position error against ground truth |
 | `export.py` | 95 | Writes everything the dashboard needs to JSON |
 | `demo_feed.py` | 59 | Precomputes the 7-platform fleet with the real detector for the cloud demo |
 | `stream.py` | 103 | Live runner: one observation per second per device, posts to the ingest endpoint. `--dry-run`, `--speed` |
@@ -49,23 +51,32 @@ reasons, rule_risk, critical = evaluate(f, ctx, ...)    # 2. rules
 ml = median(self.ml_hist)                               # 3. model risk (3 s trailing median)
 hybrid = fuse(rule_risk, ml, st.fusion, critical, floor)  # 4. noisy-OR fusion
 trust = 100.0 - hybrid                                  # 5. trust score
-events = self.incidents.update(frame)                   # 6. open / update / resolve incidents
+frame["resp"] = self.safeguard.update(frame, o)         # 6. response: accept or hold, protected position, action
+events = self.incidents.update(frame)                   # 7. open / update / resolve incidents
 return frame, events
 ```
 
-The frame returned has: `trust`, status, rule risk (`rr`), model risk (`mr`), hybrid risk (`hr`), position, OSNMA state, the top 5 reasons (`why`), and 16 display features.
+The frame returned has: `trust`, status, rule risk (`rr`), model risk (`mr`), hybrid risk (`hr`), position, OSNMA state, the top 5 reasons (`why`), 16 display features, and `resp` = `{mode, lat, lon, held_s, action, gap_m, source}`.
 
-### Tests (`engine/tests/test_engine.py`)
+### The response layer: `Safeguard.update`
 
-1. Simulation is deterministic (same seed, same output)
-2. Attack labels start on time
-3. Noisy-OR is stronger than either witness (40 and 40 give 64)
-4. Missing ML falls back to rules
-5. A critical rule pins the risk floor
-6. A rule is silent just below its threshold
-7. Rule severity scales with the exceedance
-8. OSNMA unknown is never treated as a failure
-9. Trust bands map correctly
+```python
+acceptable = has_fix and trust >= 50 and not critical
+if holding:
+    advance the estimate by odometer_speed × dt along the route (or heading)
+    if acceptable and clean streak >= 5 and |fix − estimate| <= 60 m + 3 % of distance held:  release
+elif acceptable:  accept (remember this fix and its arc-length position on the route)
+else:             start a hold from the last accepted fix
+action = CONTINUE if acceptable else ISOLATE if (critical or trust < 25) else VERIFY
+```
+
+### Tests (`engine/tests/`)
+
+`test_engine.py` (9): simulation is deterministic; attack labels start on time; noisy-OR is stronger than either witness (40 and 40 give 64); missing ML falls back to rules; a critical rule pins the risk floor; a rule is silent just below its threshold; severity scales with the exceedance; OSNMA unknown is never a failure; trust bands map correctly.
+
+`test_safeguard.py` (8): a trusted fix passes through; a spoofed fix is held and the estimate follows the odometer; a hold does not release while the fix is still far away (and does after a long clean streak, reporting the discrepancy); a clean fix that rejoins releases the hold; no fix still gives a position; action bands; route projection picks the right leg where the road doubles back; the route odometer tracks a jammed vehicle within 2 m over a minute.
+
+`test_receiver.py` (6): NMEA sentences parse; two epochs become two observations; a no-fix epoch has no position; UBX frames and the five messages parse (jamming indicator, clock, satellites, PVT); the live detector scores receiver observations; rules-only mode has no model risk.
 
 ## Supabase (`supabase/`)
 
@@ -76,7 +87,8 @@ The frame returned has: `trust`, status, rule risk (`rr`), model risk (`mr`), hy
 | `migrations/..._demo_feed_fetch.sql` | `request_demo_feed` using `pg_net` to fetch the demo data |
 | `migrations/..._presenter_rate_limit.sql` | `presenter_failures` table and rate limit on the passcode |
 | `migrations/..._cron_log_cleanup.sql` | `trim_cron_logs` every 10 minutes |
-| `functions/ingest/index.ts` | The only write path: POST only, token check by SHA-256 hash, `start_run` / `frames` / `end_run`, size limits (100 frames per call), input sanitising, upserts that ignore duplicates |
+| `migrations/..._response_layer.sql` | Adds the `response` column to `frames` and copies it in `demo_tick` |
+| `functions/ingest/index.ts` | The only write path: POST only, token check by SHA-256 hash, `start_run` / `frames` / `end_run`, size limits (100 frames per call), input sanitising, upserts that ignore duplicates, `resp` stored as `response` |
 | `load_demo_feed.sql` | Loads the precomputed demo into `demo_frames` |
 
 **Security model:** the browser can only read. All writes pass through the ingest function with a secret token that exists only in `engine/.env.local` (never committed; see `.gitignore`).
@@ -102,17 +114,17 @@ Stack: Next.js 15, React 19, TypeScript, MapLibre GL, supabase-js, self-hosted B
 |---|---|
 | `Console.tsx` | The shell: rail navigation, hash routing, command palette commands, shortcuts, hero and tour |
 | `LiveView.tsx` | Live page: fleet list, device detail, alert feed, status strip, toasts, timeline dock |
-| `MapView.tsx` | MapLibre map: light/dark styles, 3D buildings, smooth marker gliding, fading trails, follow camera |
+| `MapView.tsx` | MapLibre map: light/dark styles, 3D buildings, smooth marker gliding, fading trails, follow camera, the protected path and shield marker of the response layer |
 | `ReplayView.tsx` | Scenario replay with scrubber, ghost "real position", story mode |
 | `SpaceTime.tsx` | Canvas 4D view: ground grid, time axis, trust-coloured ribbons |
 | `ResultsView.tsx`, `MethodView.tsx` | Evaluation numbers and method/limitations |
-| `Instruments.tsx` | Trust tape, trust chart and gauges |
+| `Instruments.tsx` | Trust tape, trust chart, gauges, the OSNMA line and the response line (accepted / held / isolated, with what to do) |
 | `Report.tsx` | Per-device incident report (print to PDF) |
 | `CommandPalette.tsx`, `Toasts.tsx`, `Hero.tsx`, `Tour.tsx`, `Icons.tsx` | Search, notifications, opening screen, guided tour, icons |
 
 ### Tests (`dashboard/tests/e2e.py`)
 
-50 Playwright checks: every view, interactions, keyboard shortcuts, command palette, report, story mode, space-time, phone layout, accessibility (axe), and a JavaScript size budget.
+57 Playwright checks: every view, interactions, keyboard shortcuts, command palette, report, story mode, space-time, the response layer in the replay panel, map and results, phone layout, accessibility (axe), and a JavaScript size budget.
 
 ## Deployment
 
@@ -121,9 +133,16 @@ Stack: Next.js 15, React 19, TypeScript, MapLibre GL, supabase-js, self-hosted B
 - **Supabase**: hosts the database, realtime and the ingest function.
 - **Secrets**: the ingest token lives only in `engine/.env.local` and in the database as a hash.
 
-## How to add a real receiver (Phase 2)
+## How to run a real receiver (Phase 2)
 
-1. Read the receiver's output (UBX or NMEA over USB) in a small adapter script.
-2. Convert each epoch into the observation dictionary the simulator produces (same keys).
-3. Call `Detector.process(obs)` and post the result with `stream.post(...)` using `type: "frames"`.
-4. The dashboard shows it as a real device next to the simulated ones. No dashboard change is needed.
+The adapter is written and tested; only the hardware is missing.
+
+```bash
+cd engine
+python -m pip install pyserial
+python -m trustnav_engine.receiver --port /dev/ttyACM0 --device VAN-REAL --name "Real van" --no-model --dry-run   # first look
+set -a; source .env.local; set +a
+python -m trustnav_engine.receiver --port /dev/ttyACM0 --device VAN-REAL --name "Real van" --no-model --jsonl drive1.jsonl
+```
+
+The dashboard shows it as a real device (run mode `receiver`) next to the simulated ones. `--no-model` is deliberate: the model's "normal" is the simulator's; after a few recorded drives the thresholds and the model are re-calibrated on the real receiver (see `ROADMAP.md`).

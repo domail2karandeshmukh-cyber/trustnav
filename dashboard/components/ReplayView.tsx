@@ -4,10 +4,10 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import MapView, { type CameraApi } from "./MapView";
 import SpaceTime from "./SpaceTime";
 import { storyFor, type Beat } from "@/lib/story";
-import { ChartKey, Evidence, OsnmaLine, Signals, TrustChart, TrustFigure, TrustTape, type Bracket } from "./Instruments";
+import { ChartKey, Evidence, OsnmaLine, ResponseLine, Signals, TrustChart, TrustFigure, TrustTape, type Bracket } from "./Instruments";
 import { DroneGlyph, IconBack, IconClose, IconPause, IconPlay, IconStory, VehicleGlyph } from "./Icons";
 import type { Frame, ReplayData, Scenario } from "@/lib/types";
-import { ATTACK_WORD, STATUS_COLOR, mmss, span } from "@/lib/format";
+import { ATTACK_WORD, STATUS_COLOR, dist, mmss, span } from "@/lib/format";
 import { useWide } from "@/lib/useWide";
 import type { Theme } from "@/lib/useTheme";
 
@@ -105,6 +105,20 @@ export default function ReplayView({ data, initial, theme, onHandle, onScenario,
     return meters(rep, frame.tl) > 25 ? { lat: frame.tl[0], lon: frame.tl[1], from: rep } : null;
   }, [frame, showTruth]);
   const offBy = frame?.tl && frame.lat != null ? meters([frame.lat, frame.lon!], frame.tl) : null;
+  const prot = data.protection?.per_scenario.find((p) => p.scenario === sc.slug) ?? null;
+  // the response layer's estimate while a fix is refused: one segment per hold
+  const protectedPath = useMemo(() => {
+    const segs: [number, number][][] = [];
+    let cur: [number, number][] = [];
+    for (const f of shown) {
+      const r = f.resp;
+      if (r && r.mode === "hold" && r.lat != null && r.lon != null) cur.push([r.lat, r.lon]);
+      else if (cur.length) { segs.push(cur); cur = []; }
+    }
+    if (cur.length) segs.push(cur);
+    return segs;
+  }, [shown]);
+  const shield = frame?.resp && frame.resp.mode === "hold" && frame.resp.lat != null ? { lat: frame.resp.lat, lon: frame.resp.lon! } : null;
   const incidents = data.incidents.filter((x) => x.scenario === sc.slug);
   // the honest part of the run: where the platform really went
   const extent = useMemo(() => sc.frames.filter((f) => f.tl).map((f) => f.tl as [number, number]), [sc]);
@@ -159,6 +173,14 @@ export default function ReplayView({ data, initial, theme, onHandle, onScenario,
               <Evidence frame={frame} />
             </section>
             <section className="panel-sec"><OsnmaLine status={frame.osnma} /></section>
+            {frame.resp && <section className="panel-sec"><ResponseLine frame={frame} kind={sc.profile === "small_uav" ? "drone" : "vehicle"} /></section>}
+            {prot && win && prot.reported_max_error_m != null && (
+              <p className="verdict protect">
+                {prot.reported_blank_s > 0
+                  ? <>Without TrustNav the screen would go blank for <b>{span(prot.reported_blank_s)}</b>; the response layer kept a position within <b>{dist(prot.protected_max_error_m ?? 0)}</b> of the truth throughout.</>
+                  : <>An ordinary screen would show the {sc.profile === "small_uav" ? "drone" : "van"} up to <b>{dist(prot.reported_max_error_m)}</b> from where it really was. What the response layer passed on stayed within <b>{dist(prot.protected_max_error_m ?? 0)}</b>.</>}
+              </p>
+            )}
             <section className="panel-sec">
               <h2>Measurements</h2>
               <Signals frame={frame} extra={[["Simulator truth", frame.atk ? "Under attack" : "Clean"]]} />
@@ -181,7 +203,7 @@ export default function ReplayView({ data, initial, theme, onHandle, onScenario,
         <div className="stage-mapwrap" hidden={stage !== "map"}>
         <MapView theme={theme} glideMs={playing ? Math.min(950, 1000 / rate) : 0} onCamera={(api) => { cam.current = api; if (autoRef.current) { autoRef.current = false; setTimeout(() => startRef.current(), 600); } }}
           follow={story && beat?.camera === "close" && !story.holding ? sc.device_id : null} fitKey={`${sc.slug}${offBy != null && offBy > 1500 ? ":far" : ""}`} routes={route ? [{ id: route.slug, points: route.points }] : []}
-          tracks={[{ id: sc.slug, frames: shown }]} truth={truth} ghost={ghost} extent={extent}
+          tracks={[{ id: sc.slug, frames: shown }]} truth={truth} ghost={ghost} extent={extent} protectedPath={protectedPath} shield={shield}
           markers={frame?.lat != null ? [{ id: sc.device_id, label: sc.device_id, lat: frame.lat, lon: frame.lon!, status: frame.st, heading: frame.hdg, kind: sc.profile === "small_uav" ? "drone" : "vehicle", alarm: frame.trust < 50, selected: true }] : []}
           note={frame?.fix === false ? "No position fix" : undefined}
           padding={wide ? { top: 80, right: 60, bottom: 40, left: 40 } : { top: 76, right: 24, bottom: 24, left: 24 }} />
@@ -191,6 +213,7 @@ export default function ReplayView({ data, initial, theme, onHandle, onScenario,
           <span>Reported track, coloured by trust</span>
           <span><i className="dash route" />Planned route</span>
           {win && <label className="check"><input type="checkbox" checked={showTruth} onChange={(e) => setShowTruth(e.target.checked)} /><i className="dash truth" />Real path</label>}
+          {protectedPath.length > 0 && <span><i className="dash protect" />Protected position</span>}
         </div>
         {story && beat && (
           <div className="caption" role="status" aria-live="polite" key={story.beat}>

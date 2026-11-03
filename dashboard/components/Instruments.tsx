@@ -2,7 +2,7 @@
 
 import { useMemo, useRef, useState } from "react";
 import type { Frame, Osnma, Reason, Status } from "@/lib/types";
-import { FEATURE_LABEL, OSNMA_INFO, STATUS_COLOR, STATUS_HEX, STATUS_WORD, fmt } from "@/lib/format";
+import { FEATURE_LABEL, OSNMA_INFO, STATUS_COLOR, STATUS_HEX, STATUS_WORD, dist, fmt, span } from "@/lib/format";
 
 export function StatusWord({ st, strong }: { st: Status; strong?: boolean }) {
   return <span className={`stword${strong ? " strong" : ""}`} style={{ color: STATUS_COLOR[st] }}><i style={{ background: STATUS_COLOR[st] }} />{STATUS_WORD[st]}</span>;
@@ -224,6 +224,51 @@ export function ChartKey({ attack }: { attack?: boolean }) {
       <span><i style={{ background: "var(--s-rule)" }} />Rule risk</span>
       <span><i style={{ background: "var(--s-ml)" }} />Model risk</span>
       {attack && <span><i style={{ background: "var(--untrusted)", opacity: 0.25, height: 9 }} />Attack, ground truth</span>}
+    </div>
+  );
+}
+
+export const ACTION_INFO = {
+  CONTINUE: { word: "position accepted", tone: "var(--trusted)" },
+  VERIFY: { word: "position held", tone: "var(--suspicious)" },
+  ISOLATE: { word: "isolated", tone: "var(--untrusted)" },
+} as const;
+
+/**
+ * The response layer's verdict for this second: what the fleet software is
+ * handed, and what the operator should do. Sits next to the OSNMA line.
+ */
+export function ResponseLine({ frame, kind = "vehicle" }: { frame: Frame | null; kind?: "vehicle" | "drone" }) {
+  const r = frame?.resp;
+  if (!r) return null;
+  const info = ACTION_INFO[r.action];
+  const src = r.source === "route_odometer" ? "along the planned route from the odometer" : r.source === "heading_odometer" ? "on the last trusted heading from the odometer" : "";
+  let help: string;
+  if (r.mode === "accept") {
+    help = r.rejoined_after_s != null
+      ? `Back on GNSS after ${span(r.rejoined_after_s)} on hold. The returning fix was ${dist(r.gap_m ?? 0)} from the estimate.`
+      : "The fix passes to the fleet software unchanged.";
+  } else if (r.mode === "none") {
+    help = "No trusted fix yet to estimate from.";
+  } else {
+    const lie = r.gap_m != null ? ` The reported fix is ${dist(r.gap_m)} from the estimate and is not passed on.` : " The receiver has no fix; the estimate fills the gap.";
+    const act = r.action === "ISOLATE"
+      ? (kind === "drone" ? " Hold or return on inertial navigation; do not follow GNSS." : " Contact the driver. Dispatch, geofences and billing must not use this device's position.")
+      : " Confirm by other means (driver, camera, odometer) before acting on it.";
+    help = `Rejected for ${span(r.held_s)}. Position estimated ${src}.${lie}${act}`;
+  }
+  return (
+    <div className="osnma resp" data-action={r.action}>
+      <svg width="26" height="28" viewBox="0 0 42 46" aria-hidden="true">
+        <path d="M21 2 L39 9 V22 C39 33 31 41 21 44 C11 41 3 33 3 22 V9 Z" fill={r.mode === "hold" ? info.tone : "none"} fillOpacity="0.18" stroke={info.tone} strokeWidth="3" />
+        {r.action === "CONTINUE" && <path d="M13 23 L19 29 L30 17" fill="none" stroke={info.tone} strokeWidth="3.4" strokeLinecap="round" />}
+        {r.action === "VERIFY" && <path d="M16 15 V31 M26 15 V31" stroke={info.tone} strokeWidth="3.6" strokeLinecap="round" />}
+        {r.action === "ISOLATE" && <rect x="14" y="16" width="14" height="14" rx="2" fill={info.tone} />}
+      </svg>
+      <div>
+        <b>Response: <span style={{ color: info.tone }}>{info.word}</span></b>
+        <p>{help}</p>
+      </div>
     </div>
   );
 }

@@ -235,6 +235,7 @@ button.inc:hover { background: var(--hover); }
 .alerts-float { top: 16px; right: 16px; width: 330px; max-height: calc(100% - 110px); display: flex; flex-direction: column; }
 .float-head { display: flex; align-items: center; gap: 8px; width: 100%; padding: 12px 14px; background: none; border: 0; font-size: 15px; font-weight: 600; color: var(--ink); }
 .badge { padding: 2px 8px; border-radius: 99px; background: var(--untrusted); color: #fff; font-size: 12px; font-weight: 600; }
+[data-theme="dark"] .badge { color: #1a0a12; }
 .float-body { overflow-y: auto; padding: 4px 6px 8px; border-top: 1px solid var(--line-soft); }
 
 .strip { left: 16px; bottom: 16px; display: flex; align-items: center; gap: 18px; padding: 7px 7px 7px 14px; font-size: 13.5px; max-width: calc(100% - 100px); }
@@ -295,6 +296,13 @@ button.inc:hover { background: var(--hover); }
 .ghost { position: relative; width: 18px; height: 18px; pointer-events: none; }
 .ghost span { position: absolute; inset: 0; border: 2.5px solid var(--ink); border-radius: 50%; background: rgba(255, 255, 255, .75); }
 .ghost b { position: absolute; left: 22px; top: 50%; transform: translateY(-50%); padding: 1px 6px; border-radius: 6px; background: rgba(255, 255, 255, .92); font-size: 12px; white-space: nowrap; }
+.shield { width: 22px; height: 24px; pointer-events: none; filter: drop-shadow(0 1px 2px rgba(0, 0, 0, .35)); }
+.shield svg path { fill: #0b8f7d; fill-opacity: .85; stroke: #fff; stroke-width: 3; }
+[data-theme-map="dark"] .shield svg path { fill: #3fd9c0; stroke: #0f1621; }
+.dash.protect { border-top: 3px solid #0b8f7d; }
+[data-theme="dark"] .dash.protect { border-top-color: #3fd9c0; }
+.verdict.protect { color: var(--ink-2); }
+.verdict.protect b { color: var(--ink); }
 
 .maplibregl-ctrl-group { border-radius: 10px !important; box-shadow: var(--shadow) !important; }
 .maplibregl-ctrl-attrib { font-size: 11px; }
@@ -336,6 +344,9 @@ button.inc:hover { background: var(--hover); }
 .compare td { font-size: 16px; }
 .compare td.hl { font-weight: 600; }
 .compare tr.sub td { font-size: 14px; color: var(--ink-2); }
+.compare.landscape { max-width: none; min-width: 900px; }
+.compare.landscape td { font-size: 14px; }
+.compare.landscape tbody th { white-space: nowrap; }
 .scen td { vertical-align: middle; }
 .scen .tape-col { width: 36%; min-width: 220px; }
 .scen td.hl { font-weight: 600; background: var(--hl); }

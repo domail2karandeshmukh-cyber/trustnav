@@ -41,7 +41,8 @@ export default function MethodView({ meta }: { meta: Meta }) {
           <div><b>Anomaly model</b><span>Isolation Forest and a per-feature tail detector, trained on normal data only</span></div>
         </div>
         <div><b>Fusion</b><span>Either witness can raise the alarm; together they are stronger</span></div>
-        <div className="out"><b>Trust score and evidence</b><span>Trusted from 75, degraded from 50, suspicious from 25. An incident opens after three seconds below 50</span></div>
+        <div><b>Trust score and evidence</b><span>Trusted from 75, degraded from 50, suspicious from 25. An incident opens after three seconds below 50</span></div>
+        <div className="out"><b>Response</b><span>Below 50 the fix is refused: the position handed on is estimated from the odometer along the route, and the operator gets an action: continue, verify or isolate</span></div>
       </figure>
 
       <div className="doc-cols">
@@ -62,6 +63,10 @@ trust = 100 − combined risk`}</pre>
 w_r = ${meta.fusion_search.chosen.rule_weight}, w_m = ${meta.fusion_search.chosen.ml_weight}, chosen on validation routes
 a critical rule holds combined risk at ${rs.critical_risk_floor ?? 70} or more`}</pre>
           <p>Averaging would dilute a confident alarm: a model at 90 and quiet rules at 20 average to 55. This noisy-OR fusion keeps it at 92.</p>
+
+          <h2>From detection to response</h2>
+          <p>An alert alone leaves the operator looking at a lie. So the score drives a response, the way an intrusion prevention system acts on what an intrusion detection system finds. A fix with trust under {meta.settings.safeguard?.hold_below_trust ?? 50}, or with critical evidence, is <strong>refused</strong>: it never reaches dispatch, geofencing or billing. In its place the position is <strong>dead reckoned</strong> from the last trusted fix using the odometer, which a spoofer cannot touch, advancing along the planned route so the sideways error of the last fix is dropped. The receiver only regains control after five clean seconds <em>and</em> a fix that rejoins the estimate, so a spoofer cannot end the hold by looking clean while still far away.</p>
+          <p>Two things it cannot do. It does not touch the radio signal: no software can stop a jammer. And its estimate drifts with the odometer, about three percent of the distance travelled, so a long hold needs the operator to verify by other means. That is why every hold carries an action: <strong>verify</strong> (confirm before acting) or, in the untrusted band, <strong>isolate</strong> (do not act on this device at all; a drone holds or returns on inertial navigation).</p>
 
           <h2>Galileo authentication</h2>
           <p>Since July 2025 Galileo signs its navigation messages (OSNMA). A receiver that checks the signatures can tell real Galileo data from forged data. TrustNav reads three states: <strong>verified</strong>, <strong>lost</strong> (authenticated data disappeared, ambiguous on its own) and <strong>failed</strong> (signatures do not match, which is critical). A receiver that does not report OSNMA is never treated as failing.</p>
@@ -95,6 +100,33 @@ a critical rule holds combined risk at ${rs.critical_risk_floor ?? 70} or more`}
           </dl>
         </aside>
       </div>
+
+      <section>
+        <h2>How this differs from what exists</h2>
+        <p className="doc-lede">Existing tools either sit inside one receiver and output a flag with no explanation, or they are fixed monitoring stations for sites and countries. None of the ones we found gives a fleet operator a per-vehicle, per-second, explained trust score with a response. Sources and detail are in <code>docs/COMPARISON.md</code> in the repository.</p>
+        <div className="scroll-x" role="region" aria-label="Comparison with existing approaches, scrolls sideways" tabIndex={0}>
+          <table className="compare landscape">
+            <thead>
+              <tr><th /><th><b>Receiver flags</b><small>u-blox, Septentrio AIM+</small></th><th><b>Fixed probes</b><small>GPSPatron</small></th><th><b>Anti-jam hardware</b><small>infiniDome</small></th><th><b>Fleet telematics</b><small>Geotab and others</small></th><th><b>Galileo OSNMA</b><small>since July 2025</small></th><th className="hl"><b>TrustNav</b><small>this project</small></th></tr>
+            </thead>
+            <tbody>
+              {([
+                ["Protects", "one receiver", "a site or region", "one receiver", "the fleet screen", "Galileo data only", "each moving platform"],
+                ["Detects", "jamming, spoofing", "jamming, spoofing", "jamming (mitigates)", "relays the receiver's jamming flag", "forged Galileo data", "jamming, spoofing, forgery"],
+                ["Per-second score", "no, a state code", "a probability", "no", "no", "no", "yes, 0 to 100"],
+                ["Explains why", "no", "partly, charts", "no", "no", "n/a", "yes, in words with values"],
+                ["Uses route and odometer", "no", "no", "no", "no", "no", "yes"],
+                ["Responds", "no", "alerts", "yes, at RF", "a report", "a flag", "refuses the fix, estimates, recommends"],
+                ["Extra hardware", "none", "probe, 1 to 3 antennas", "2 or more antennas", "none", "capable receiver", "none"],
+                ["Status", "shipping", "shipping", "shipping", "shipping", "operational", "prototype, simulated data"],
+              ] as string[][]).map((row) => (
+                <tr key={row[0]}><th scope="row">{row[0]}</th>{row.slice(1).map((c, i) => <td key={i} className={i === 5 ? "hl" : ""}>{c}</td>)}</tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        <p className="note">The receiver flags are inputs to TrustNav, not rivals: the receiver adapter reads the u-blox jamming indicator and spoofing state and combines them with motion, route and signal evidence. What no software can do is remove a jammer from the air; that is antenna hardware.</p>
+      </section>
 
       <section>
         <h2>What this build does not claim</h2>

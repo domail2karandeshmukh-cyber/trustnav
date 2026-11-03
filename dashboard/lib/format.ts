@@ -94,3 +94,8 @@ export function span(seconds: number) {
   if (s < 60) return `${s} s`;
   return `${Math.floor(s / 60)} min ${String(s % 60).padStart(2, "0")} s`;
 }
+
+/** Metres as a short human distance: 23 m, 1.2 km. */
+export function dist(m: number) {
+  return m >= 1000 ? `${(m / 1000).toFixed(m >= 10000 ? 0 : 1)} km` : `${Math.round(m)} m`;
+}

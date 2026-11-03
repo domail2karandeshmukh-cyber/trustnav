@@ -86,9 +86,22 @@ class IncidentSettings:
 
 
 @dataclass(frozen=True)
+class SafeguardSettings:
+    """Response layer: when to refuse a fix and when to take it back."""
+
+    hold_below_trust: float = 50.0        # same line as the incident tracker and the dashboard alert line
+    isolate_below_trust: float = 25.0     # UNTRUSTED band: stop acting on this device's position at all
+    release_after_clean: int = 5          # consecutive acceptable fixes before a hold can end
+    release_after_long_clean: int = 60    # ... or this many, regardless of the rejoin check
+    rejoin_base_m: float = 60.0           # returning fix must lie this close to the estimate ...
+    rejoin_frac: float = 0.03             # ... plus 3 % of the distance dead-reckoned while held
+
+
+@dataclass(frozen=True)
 class Settings:
-    version: str = "2.0.0"
+    version: str = "2.1.0"
     rules: RuleSettings = field(default_factory=RuleSettings)
+    safeguard: SafeguardSettings = field(default_factory=SafeguardSettings)
     fusion: FusionSettings = field(default_factory=FusionSettings)
     trust: TrustBands = field(default_factory=TrustBands)
     incidents: IncidentSettings = field(default_factory=IncidentSettings)

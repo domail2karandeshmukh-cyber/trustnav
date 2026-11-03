@@ -2,3 +2,4 @@ numpy>=2.0
 scikit-learn>=1.5
 joblib>=1.4
 pytest>=8
+pyserial>=3.5   # only for --port in trustnav_engine.receiver

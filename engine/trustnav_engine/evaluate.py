@@ -136,6 +136,51 @@ def score_runs(runs, threshold):
     return out
 
 
+def protection_report(runs):
+    """What the operator would have seen without TrustNav, against what the
+    response layer hands downstream. Uses simulator ground truth, so this is
+    an evaluation-only view: a real receiver has no truth to compare with."""
+    from .geo import haversine_m
+
+    per = []
+    for spec, frames in runs:
+        atk = [f for f in frames if f["atk"]]
+        rep = [haversine_m(f["lat"], f["lon"], *f["tl"]) for f in atk if f["lat"] is not None]
+        prot = [haversine_m(f["resp"]["lat"], f["resp"]["lon"], *f["tl"]) for f in atk if f["resp"]["lat"] is not None]
+        start = next((i for i, f in enumerate(frames) if f["atk"]), None)
+        first_hold = next((i for i, f in enumerate(frames) if f["atk"] and f["resp"]["mode"] == "hold"), None)
+        per.append({
+            "scenario": spec.slug, "label": spec.label, "attack": spec.attack,
+            "attack_observations": len(atk),
+            "reported_max_error_m": round(max(rep), 1) if rep else None,
+            "reported_mean_error_m": round(float(np.mean(rep)), 1) if rep else None,
+            "reported_blank_s": sum(1 for f in atk if f["lat"] is None),
+            "protected_max_error_m": round(max(prot), 1) if prot else None,
+            "protected_mean_error_m": round(float(np.mean(prot)), 1) if prot else None,
+            "protected_blank_s": sum(1 for f in atk if f["resp"]["lat"] is None),
+            "hold_after_s": None if first_hold is None or start is None else first_hold - start,
+            "held_s": sum(1 for f in frames if f["resp"]["mode"] == "hold"),
+            "false_hold_s": sum(1 for f in frames if not f["atk"] and f["resp"]["mode"] == "hold"),
+            "actions": {a: sum(1 for f in frames if f["resp"]["action"] == a) for a in ("CONTINUE", "VERIFY", "ISOLATE")},
+        })
+    spoof = [p for p in per if p["attack"] not in ("none", "jamming") and p["reported_max_error_m"] is not None]
+    jam = [p for p in per if p["attack"] == "jamming"]
+    normal_s = sum(len(frames) for spec, frames in runs if spec.attack == "none")
+    return {
+        "per_scenario": per,
+        "spoofing_worst_reported_error_m": max((p["reported_max_error_m"] for p in spoof), default=None),
+        "spoofing_worst_protected_error_m": max((p["protected_max_error_m"] for p in spoof), default=None),
+        "spoofing_mean_reported_error_m": round(float(np.mean([p["reported_mean_error_m"] for p in spoof])), 1) if spoof else None,
+        "spoofing_mean_protected_error_m": round(float(np.mean([p["protected_mean_error_m"] for p in spoof])), 1) if spoof else None,
+        "jamming_blank_s_without": sum(p["reported_blank_s"] for p in jam),
+        "jamming_blank_s_with": sum(p["protected_blank_s"] for p in jam),
+        "false_hold_s_total": sum(p["false_hold_s"] for p in per),
+        "normal_observations": normal_s,
+        "note": "Errors are distances from simulator ground truth during the attack. 'Reported' is the raw GNSS fix an "
+                "ordinary fleet screen would show; 'protected' is what the response layer hands downstream.",
+    }
+
+
 def choose_fusion(model, threshold):
     """Pick fusion weights on validation routes only (never on held-out).
 
@@ -178,6 +223,7 @@ def evaluate_all():
         runs.append((spec, frames))
         incidents += inc
     metrics = score_runs(runs, th)
+    metrics["protection"] = protection_report(runs)
     return model, settings, grid, runs, incidents, metrics
 
 
@@ -185,6 +231,7 @@ def main():
     model, settings, grid, runs, incidents, metrics = evaluate_all()
     print("model", model.meta["model_version"], "fit", model.meta["fit_rows"], "cal", model.meta["calibration_rows"])
     print("fusion chosen on validation:", settings.fusion.rule_weight, settings.fusion.ml_weight)
+    prot = metrics.pop("protection")
     for k, m in metrics.items():
         print(f"{k:7s} P {m['precision']:.3f} R {m['recall']:.3f} F1 {m['f1']:.3f} FPR {m['false_positive_rate']:.4f} "
               f"ROC {m.get('roc_auc')} lat {m['mean_detection_latency_obs']}")
@@ -197,6 +244,15 @@ def main():
     for (spec, frames) in runs:
         tr = [f["trust"] for f in frames]
         print(f"{spec.slug:22s} min {min(tr):5.1f} mean {np.mean(tr):5.1f}  incidents {sum(1 for i in incidents if i['scenario']==spec.slug)}")
+    print()
+    print("response layer (position error against ground truth during the attack, metres)")
+    for p in prot["per_scenario"]:
+        print(f"{p['scenario']:22s} reported max {str(p['reported_max_error_m']):>8s} mean {str(p['reported_mean_error_m']):>7s} blank {p['reported_blank_s']:3d}s | "
+              f"protected max {str(p['protected_max_error_m']):>6s} mean {str(p['protected_mean_error_m']):>6s} blank {p['protected_blank_s']:3d}s | "
+              f"hold after {str(p['hold_after_s']):>4s}s held {p['held_s']:3d}s false hold {p['false_hold_s']}s")
+    print(f"spoofing worst error: reported {prot['spoofing_worst_reported_error_m']} m, protected {prot['spoofing_worst_protected_error_m']} m; "
+          f"jamming blank screen: {prot['jamming_blank_s_without']} s without, {prot['jamming_blank_s_with']} s with; "
+          f"false holds {prot['false_hold_s_total']} s")
 
 
 if __name__ == "__main__":

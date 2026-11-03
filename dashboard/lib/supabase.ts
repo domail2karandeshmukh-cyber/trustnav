@@ -34,6 +34,7 @@ export function rowToFrame(r: any): Frame {
     kind: r.attack_kind,
     f: r.features ?? {},
     why: r.why ?? [],
+    resp: r.response ?? undefined,
   };
 }
 

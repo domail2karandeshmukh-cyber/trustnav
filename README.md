@@ -9,9 +9,12 @@
 
 | Document | What it explains |
 |---|---|
+| [docs/SUMMARY.md](docs/SUMMARY.md) | One page: what, why, how, results, limits, next |
 | [docs/OBJECTIVES.md](docs/OBJECTIVES.md) | The problem, what the tool does in real life, who uses it, results and limits |
-| [docs/HOW_IT_WORKS.md](docs/HOW_IT_WORKS.md) | The full pipeline step by step, from receiver observation to dashboard |
-| [docs/CODE_GUIDE.md](docs/CODE_GUIDE.md) | Every file and function, tests, security model, deployment |
+| [docs/HOW_IT_WORKS.md](docs/HOW_IT_WORKS.md) | The full pipeline step by step, from receiver observation to response and dashboard |
+| [docs/CODE_GUIDE.md](docs/CODE_GUIDE.md) | Every file and function, tests, security model, deployment, how to plug in a real receiver |
+| [docs/COMPARISON.md](docs/COMPARISON.md) | How it differs from receiver flags, fixed probes, anti-jam hardware, fleet telematics, OSNMA and recent papers, with sources |
+| [docs/ROADMAP.md](docs/ROADMAP.md) | Prevention versus detection, and the improvement plan: real receiver, calibration, recorded attacks, second antenna, OSNMA |
 
 ## What it does
 
@@ -28,6 +31,10 @@ Rules (15)   Model                   Isolation Forest + per-feature tail detecto
    └────┬─────┘
         ▼
 Noisy-OR fusion → trust 0–100 + evidence → incidents → live dashboard
+        │
+        ▼
+Response layer                       below 50 the fix is refused; the position handed on is dead reckoned
+                                     from the odometer along the route; action: continue, verify or isolate
 ```
 
 ## Results (held-out routes, synthetic data)
@@ -41,13 +48,15 @@ Noisy-OR fusion → trust 0–100 + evidence → incidents → live dashboard
 
 Ten held-out scenarios: two normal drives, teleport spoof, gradual drift, signal anomaly, stealth drift (OSNMA still verified), OSNMA forgery, jamming with recovery, and two drone survey missions. The stealth drift is caught about 40 s after it starts, at roughly 12 m off the road; the fixed 150 m rule alone would take about 3.5 minutes.
 
+**Response layer** on the same attacks: the worst position an ordinary screen would show is 8.0 km off; what TrustNav hands downstream is never more than 29 m off. The 100 s jamming blank screen becomes 0 s. Holds outside attacks total 26 s over the whole catalogue.
+
 These numbers are an upper bound: one simulator produces every split. See *Limitations* in the dashboard's Method tab.
 
 ## Repository layout
 
 | Path | What |
 |---|---|
-| `engine/` | Python detection engine: simulator, features, rules, model, fusion, incidents, evaluation, live streamer |
+| `engine/` | Python detection engine: simulator, features, rules, model, fusion, response layer, incidents, evaluation, live streamer, real-receiver adapter |
 | `dashboard/` | Next.js control room: live fleet, replay, incidents, evaluation, method |
 | `supabase/` | Database schema, row-level security, demo feed, ingest Edge Function |
 
@@ -56,10 +65,11 @@ These numbers are an upper bound: one simulator produces every split. See *Limit
 ```bash
 cd engine
 python -m pip install -r requirements.txt
-python -m pytest -q                      # 9 tests
+python -m pytest -q                      # 23 tests
 python -m trustnav_engine.evaluate       # train, choose fusion weights, print held-out metrics
 python -m trustnav_engine.export         # write out/*.json for the dashboard
 python -m trustnav_engine.stream --dry-run --speed 10   # live engine without sending
+python -m trustnav_engine.receiver --port /dev/ttyACM0 --no-model --dry-run   # a real u-blox receiver (NMEA/UBX over USB)
 ```
 
 To stream live to the dashboard, put the ingest URL and token in `engine/.env.local` (never committed) and run:

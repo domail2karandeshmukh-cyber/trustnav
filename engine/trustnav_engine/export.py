@@ -21,6 +21,7 @@ OUT = Path(__file__).resolve().parents[1] / "out"
 
 def build():
     model, settings, grid, runs, incidents, metrics = evaluate_all()
+    protection = metrics.pop("protection")
     routes = load_routes()
     run_id = datetime.now(timezone.utc).strftime("%Y%m%d%H%M%S")
     scenarios = []
@@ -57,6 +58,7 @@ def build():
                              "length_m": round(r.length_m)} for r in routes.values()],
         "incidents": incidents,
         "experiments": metrics,
+        "protection": protection,
         "fusion_search": {"chosen": {"rule_weight": settings.fusion.rule_weight, "ml_weight": settings.fusion.ml_weight},
                           "grid": grid, "split": "validation routes only"},
         "model": model.meta,
