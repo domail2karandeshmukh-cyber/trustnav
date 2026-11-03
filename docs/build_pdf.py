@@ -50,11 +50,27 @@ def md(text: str) -> str:
     return markdown.markdown(text, extensions=["tables", "fenced_code", "sane_lists"])
 
 
+# Sections that the standalone markdown files need but the single document already has elsewhere.
+TRIM = {
+    "OBJECTIVES.md": [("## Measured results (held-out routes, synthetic data)", "## Measured results\n\nPrecision 99.3 %, recall 96.1 %, false alarm rate 0.44 %, 7 of 7 attack types caught; the response layer cuts the worst operator-visible error from 8.0 km to 29 m. The full tables, scenario by scenario, are in section 6.\n"),
+                      ("## Next steps (Phase 2)", "## Next steps\n\nA real receiver and antenna, calibration on real normal drives, replay of public attack recordings, a second antenna, real OSNMA: the plan with effort and priorities is in section 8.\n")],
+    "HOW_IT_WORKS.md": [("## Run it yourself", "")],
+}
+
+
 def body_without_title(path: Path) -> str:
     lines = path.read_text().splitlines()
     if lines and lines[0].startswith("# "):
         lines = lines[1:]
-    return "\n".join(lines)
+    text = "\n".join(lines)
+    for heading, replacement in TRIM.get(path.name, []):
+        if heading not in text:
+            continue
+        head, rest = text.split(heading, 1)
+        # cut to the next heading of the same level, or the end
+        m = re.search(r"\n## ", rest)
+        text = head + replacement + (rest[m.start():] if m else "")
+    return text
 
 
 def console_section(brief: bool = False) -> str:
