@@ -34,8 +34,8 @@ export default function Hero({ onStory, onConsole }: { onStory: () => void; onCo
         <div className="hero-facts">
           <span><b>7 of 7</b> attacks caught</span>
           <span><b>0.44%</b> false alarms</span>
-          <span><b>Galileo OSNMA</b> aware</span>
-          <span><b>1 Hz</b> live scoring</span>
+          <span><b>8 km lie</b> cut to 4 m</span>
+          <span><b>Galileo</b> signatures checked</span>
         </div>
         <p className="hero-foot">Research prototype, ESAIP Angers. Attacks are simulated in software.</p>
       </div>

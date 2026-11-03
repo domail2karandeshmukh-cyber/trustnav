@@ -9,7 +9,7 @@ const STEPS = [
 ];
 const KEY = "trustnav-tour-done";
 
-export default function Tour({ onDone }: { onDone?: () => void }) {
+export default function Tour({ onDone, onGuide }: { onDone?: () => void; onGuide?: () => void }) {
   const [step, setStep] = useState<number | null>(null);
   useEffect(() => {
     try { if (!localStorage.getItem(KEY)) setStep(0); } catch { setStep(0); }
@@ -24,6 +24,7 @@ export default function Tour({ onDone }: { onDone?: () => void }) {
       <p>{s.body}</p>
       <div className="tour-actions">
         <button className="btn sm" onClick={finish}>Skip</button>
+        {onGuide && <button className="btn sm" onClick={() => { finish(); onGuide(); }}>Full guide</button>}
         <button className="btn sm primary" onClick={() => (step + 1 < STEPS.length ? setStep(step + 1) : finish())}>{step + 1 < STEPS.length ? "Next" : "Start watching"}</button>
       </div>
     </div>

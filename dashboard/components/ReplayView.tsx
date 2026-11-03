@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import MapView, { type CameraApi } from "./MapView";
 import SpaceTime from "./SpaceTime";
 import { storyFor, type Beat } from "@/lib/story";
-import { ChartKey, Evidence, OsnmaLine, ResponseLine, Signals, TrustChart, TrustFigure, TrustTape, type Bracket } from "./Instruments";
+import { ChartKey, Evidence, OsnmaLine, PlainVerdict, ResponseLine, Signals, TrustChart, TrustFigure, TrustTape, type Bracket } from "./Instruments";
 import { DroneGlyph, IconBack, IconClose, IconPause, IconPlay, IconStory, VehicleGlyph } from "./Icons";
 import type { Frame, ReplayData, Scenario } from "@/lib/types";
 import { ATTACK_WORD, STATUS_COLOR, dist, mmss, span } from "@/lib/format";
@@ -173,6 +173,7 @@ export default function ReplayView({ data, initial, theme, onHandle, onScenario,
                 : <>Normal run: <b>{result?.false_alerts ? `${result.false_alerts} false alerts` : "no false alerts"}</b>.</>}
             </p>
             <TrustFigure frame={frame} since={offBy != null && frame.atk ? `Reported position is ${offBy >= 1000 ? `${(offBy / 1000).toFixed(1)} km` : `${Math.round(offBy)} m`} from the real one` : `${mmss(frame.s)} into the run`} />
+            <PlainVerdict frame={frame} kind={sc.profile === "small_uav" ? "drone" : "vehicle"} />
             <section className="panel-sec">
               <h2>Why</h2>
               <Evidence frame={frame} />

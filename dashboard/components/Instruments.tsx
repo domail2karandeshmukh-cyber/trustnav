@@ -3,6 +3,7 @@
 import { useMemo, useRef, useState } from "react";
 import type { Frame, Osnma, Reason, Status } from "@/lib/types";
 import { FEATURE_LABEL, OSNMA_INFO, STATUS_COLOR, STATUS_HEX, STATUS_WORD, dist, fmt, span } from "@/lib/format";
+import { gloss, plainVerdict } from "@/lib/plain";
 
 export function StatusWord({ st, strong }: { st: Status; strong?: boolean }) {
   return <span className={`stword${strong ? " strong" : ""}`} style={{ color: STATUS_COLOR[st] }}><i style={{ background: STATUS_COLOR[st] }} />{STATUS_WORD[st]}</span>;
@@ -99,11 +100,11 @@ export function Evidence({ frame, limit = 4 }: { frame: Frame | null; limit?: nu
       {frame.why.slice(0, limit).map((r) => (
         <li key={r.code} style={{ borderColor: SEV_COLOR[r.severity] }}>
           <div className="reason-top">
-            <h4>{r.title}</h4>
+            <h4>{gloss(r.title)}</h4>
             <span className="sev" style={{ color: SEV_COLOR[r.severity] }}>{SEV_WORD[r.severity]}</span>
             <span className="contrib num" title="Risk added by this evidence">+{Math.round(r.contribution)}</span>
           </div>
-          <p>{r.detail}</p>
+          <p>{gloss(r.detail)}</p>
         </li>
       ))}
     </ol>
@@ -269,6 +270,18 @@ export function ResponseLine({ frame, kind = "vehicle" }: { frame: Frame | null;
         <b>Response: <span style={{ color: info.tone }}>{info.word}</span></b>
         <p>{help}</p>
       </div>
+    </div>
+  );
+}
+
+/** The verdict a non-expert needs first: what is happening to this platform, in one or two sentences. */
+export function PlainVerdict({ frame, kind }: { frame: Frame | null; kind: "vehicle" | "drone" }) {
+  const p = plainVerdict(frame, kind);
+  if (!p) return null;
+  return (
+    <div className="plain" style={{ borderColor: STATUS_COLOR[p.tone] }} data-tone={p.tone}>
+      <b>{p.title}</b>
+      <p>{p.body}</p>
     </div>
   );
 }

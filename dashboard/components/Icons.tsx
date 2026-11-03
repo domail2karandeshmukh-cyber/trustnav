@@ -57,6 +57,9 @@ export const IconStory = ({ size, ...p }: P) => (
 export const IconTimeline = ({ size, ...p }: P) => (
   <svg {...base(size)} {...p}><path d="M4 7h16M4 12h16M4 17h16" /><rect x="6" y="5.5" width="6" height="3" rx="1" fill="currentColor" stroke="none" /><rect x="10" y="10.5" width="8" height="3" rx="1" fill="currentColor" stroke="none" /><rect x="5" y="15.5" width="4" height="3" rx="1" fill="currentColor" stroke="none" /></svg>
 );
+export const IconHelp = ({ size, ...p }: P) => (
+  <svg {...base(size)} {...p}><circle cx="12" cy="12" r="9" /><path d="M9.5 9.5a2.5 2.5 0 1 1 3.5 2.3c-.7.3-1 .8-1 1.5v.4" /><path d="M12 17v.2" /></svg>
+);
 export const IconBell = ({ size, ...p }: P) => (
   <svg {...base(size)} {...p}><path d="M6 16V11a6 6 0 0 1 12 0v5l1.5 2h-15z" /><path d="M10 20.5a2.2 2.2 0 0 0 4 0" /></svg>
 );

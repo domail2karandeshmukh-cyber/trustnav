@@ -64,6 +64,7 @@ async def main():
         await pg.locator(".row").first.click()
         await pg.wait_for_selector(".detail")
         check("live: detail opens", await pg.locator(".detail h1").count() == 1)
+        check("v7: plain verdict in the detail panel", await pg.locator(".detail .plain b").count() == 1 and len(await pg.locator(".detail .plain p").inner_text()) > 30)
         check("live: trust figure", await pg.locator(".figure .num").count() >= 1)
         # keyboard: Esc back, J next
         await pg.keyboard.press("Escape"); await pg.wait_for_timeout(300)
@@ -108,6 +109,9 @@ async def main():
                 break
             await pg.keyboard.press("ArrowRight"); await pg.wait_for_timeout(40)
         check("response: hold shown in the panel", await pg.locator(".resp[data-action='ISOLATE'], .resp[data-action='VERIFY']").count() == 1)
+        verdict = await pg.locator(".workspace.replay .plain").inner_text()
+        check("v7: replay verdict names the attack in plain words", "faked" in verdict.lower() or "forged" in verdict.lower() or "jammed" in verdict.lower() or "drifting" in verdict.lower(), verdict[:80])
+        check("v7: evidence uses everyday wording", "signal strength" in (await pg.locator(".workspace.replay .reasons").inner_text()).lower() or "position moved" in (await pg.locator(".workspace.replay .reasons").inner_text()).lower())
         check("response: shield marker on the map", await pg.locator(".workspace.replay .shield").count() == 1)
         check("response: protected path in the legend", await pg.locator(".legend .protect").count() == 1)
         check("response: replay verdict quotes the protection", "response layer" in (await pg.locator(".verdict.protect").inner_text()).lower())
@@ -141,6 +145,14 @@ async def main():
         check("live: fleet timeline dock", await pg.locator(".timeline .tl-row").count() >= 5)
         check("v6: no stray dialog before the live checks", await pg.locator(".report-back, .caption.present").count() == 0)
         check("v6: fleet KPI strip", await pg.locator(".kpis .kpi").count() == 4)
+        check("v7: map legend", await pg.locator(".live-legend span").count() >= 5)
+        check("v7: fleet headline in plain words", "believed" in (await pg.locator(".headline").inner_text()))
+        await pg.keyboard.press("Shift+?"); await pg.wait_for_timeout(400)
+        check("v7: guide opens with ?", await pg.locator(".guide h2").count() == 1)
+        check("v7: guide explains the map and the attacks", await pg.locator(".guide-legend li").count() >= 8 and await pg.locator(".guide-attacks > div").count() == 3)
+        await axe(pg, "guide")
+        await pg.keyboard.press("Escape"); await pg.wait_for_timeout(300)
+        check("v7: guide closes with Esc", await pg.locator(".guide").count() == 0)
         check("v6: markers carry a trust ring and score", await pg.locator(".view-live .mk-arc").count() >= 5 and await pg.locator(".view-live .mk-tag em").first.inner_text() != "")
         for _ in range(40):
             if await pg.locator(".view-live .shield").count(): break
@@ -202,7 +214,7 @@ async def main():
         await pg.wait_for_selector(".caption", timeout=20000)
         check("story: starts from the opening screen", True)
         first_title = await pg.locator(".caption h3").inner_text()
-        await pg.wait_for_timeout(12000)
+        await pg.wait_for_timeout(16000)
         later_title = await pg.locator(".caption h3").inner_text()
         check("story: beats advance on their own", first_title != later_title, f"{first_title} / {later_title}")
         dots = await pg.locator(".caption-dots i").count()

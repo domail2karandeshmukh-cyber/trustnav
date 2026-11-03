@@ -3,7 +3,8 @@
 import { useEffect, useMemo, useRef, useState, type Dispatch, type ReactNode, type SetStateAction } from "react";
 import MapView from "./MapView";
 import SpaceTime from "./SpaceTime";
-import { ChartKey, Evidence, OsnmaLine, ResponseLine, Signals, StatusWord, TrustChart, TrustFigure, TrustTape } from "./Instruments";
+import { ChartKey, Evidence, OsnmaLine, PlainVerdict, ResponseLine, Signals, StatusWord, TrustChart, TrustFigure, TrustTape } from "./Instruments";
+import { plainFleet } from "@/lib/plain";
 import { DroneGlyph, IconBack, IconBell, IconChevron, IconClose, IconKey, IconPlay, IconReport, IconTarget, IconTimeline, VehicleGlyph } from "./Icons";
 import Report from "./Report";
 import { useToasts } from "./Toasts";
@@ -26,7 +27,7 @@ export interface LiveHandle {
 
 const ORDER: Status[] = ["UNTRUSTED", "SUSPICIOUS", "DEGRADED", "TRUSTED"];
 
-export default function LiveView({ routes, theme, onHandle, visible }: { routes: Record<string, RouteGeom> | null; theme: Theme; onHandle?: (h: LiveHandle) => void; visible: boolean }) {
+export default function LiveView({ routes, theme, onHandle, visible, onGuide }: { routes: Record<string, RouteGeom> | null; theme: Theme; onHandle?: (h: LiveHandle) => void; visible: boolean; onGuide: () => void }) {
   const fleet = useFleet();
   const wide = useWide();
   const toasts = useToasts();
@@ -176,10 +177,11 @@ export default function LiveView({ routes, theme, onHandle, visible }: { routes:
   const alerts = <AlertFeed incidents={fleet.incidents} name={name} onPick={pick} frames={fleet.frames} latest={latest} acked={acked} onAck={ack} />;
   const meanTrust = active.length ? active.reduce((a, d) => a + latest[d.id].trust, 0) / active.length : null;
   const headline = fleet.source === "connecting" ? null
-    : counts.UNTRUSTED + counts.SUSPICIOUS === 0 && counts.DEGRADED === 0 ? `All ${active.length} platforms trusted`
-    : counts.UNTRUSTED > 0 ? `${counts.UNTRUSTED} platform${counts.UNTRUSTED > 1 ? "s" : ""} untrusted: ${sorted.filter((d) => latest[d.id].st === "UNTRUSTED").map((d) => d.name).join(", ")}`
-    : counts.SUSPICIOUS > 0 ? `${counts.SUSPICIOUS} suspicious: ${sorted.filter((d) => latest[d.id].st === "SUSPICIOUS").map((d) => d.name).join(", ")}`
-    : `${counts.DEGRADED} degraded, nothing suspicious`;
+    : plainFleet(active.length, {
+      untrusted: sorted.filter((d) => latest[d.id].st === "UNTRUSTED").map((d) => d.name),
+      suspicious: sorted.filter((d) => latest[d.id].st === "SUSPICIOUS").map((d) => d.name),
+      degraded: counts.DEGRADED,
+    }, held);
 
   return (
     <div className="workspace">
@@ -197,6 +199,7 @@ export default function LiveView({ routes, theme, onHandle, visible }: { routes:
                 <button aria-pressed={filter === "attention"} onClick={() => setFilter("attention")}>Needs attention <span className="num">{attention.length}</span></button>
               </div>
             </header>
+            <p className="panel-blurb">TrustNav checks, every second, whether each vehicle&apos;s satellite position can be believed, and refuses the ones that cannot. <button className="link" onClick={onGuide}>How to read this screen</button></p>
             {!wide && open.length > 0 && <div className="panel-sec">{alerts}</div>}
             {fleet.source === "connecting" ? (
               <div className="rows">{[0, 1, 2, 3].map((i) => <div key={i} className="row skeleton" />)}</div>
@@ -231,6 +234,17 @@ export default function LiveView({ routes, theme, onHandle, visible }: { routes:
         </div>
         {wide && fleet.source !== "connecting" && stage === "map" && (
           <FleetKpis trust={meanTrust} counts={counts} open={open.length} held={held} worstLie={worstLie} />
+        )}
+        {wide && fleet.source !== "connecting" && stage === "map" && (
+          <div className="float live-legend" aria-label="Map legend">
+            <span><i className="lg-ring" style={{ borderColor: STATUS_COLOR.TRUSTED }} />trusted</span>
+            <span><i className="lg-ring" style={{ borderColor: STATUS_COLOR.DEGRADED }} />doubts</span>
+            <span><i className="lg-ring" style={{ borderColor: STATUS_COLOR.SUSPICIOUS }} />suspicious</span>
+            <span><i className="lg-ring" style={{ borderColor: STATUS_COLOR.UNTRUSTED }} />untrusted</span>
+            <span><i className="lg-ring hollow" style={{ borderColor: STATUS_COLOR.UNTRUSTED }} />refused fix</span>
+            <span><i className="lg-shield" />real position</span>
+            <button className="link" onClick={onGuide}>Guide</button>
+          </div>
         )}
         {present && selDev && sel && (
           <div className="caption present" role="status" aria-live="polite" key={selDev.id}>
@@ -342,6 +356,7 @@ function DeviceDetail({ device, frames, incidents, routeName, onBack, follow, on
         </div>
       </header>
       <TrustFigure frame={f} since={sinceText(frames)} />
+      <PlainVerdict frame={f} kind={device.kind} />
       <section className="panel-sec">
         <div className="sec-head"><h2>Last five minutes</h2>{f?.t && <span className="num">{clock(f.t)}</span>}</div>
         <TrustTape frames={frames} slots={KEEP} first={first} height={12} brackets={brackets} />
