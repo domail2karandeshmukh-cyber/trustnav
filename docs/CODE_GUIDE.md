@@ -16,7 +16,7 @@ trustnav/
 │   ├── components/                the screens and widgets
 │   ├── lib/                       data hook, types, helpers
 │   ├── public/data/               recorded data the page can play without a database
-│   └── tests/e2e.py               50 end-to-end checks
+│   └── tests/e2e.py               59 end-to-end checks
 └── supabase/
     ├── migrations/                database schema and functions, in order
     ├── functions/ingest/          the secure write endpoint
@@ -124,7 +124,7 @@ Stack: Next.js 15, React 19, TypeScript, MapLibre GL, supabase-js, self-hosted B
 
 ### Tests (`dashboard/tests/e2e.py`)
 
-57 Playwright checks: every view, interactions, keyboard shortcuts, command palette, report, story mode, space-time, the response layer in the replay panel, map and results, phone layout, accessibility (axe), and a JavaScript size budget.
+59 Playwright checks: every view, interactions, keyboard shortcuts, command palette, report, story mode, space-time, the response layer in the replay panel, map and results, the comparison table, phone layout, accessibility (axe), and a JavaScript size budget.
 
 ## Deployment
 
