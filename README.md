@@ -18,7 +18,7 @@
 
 ## Documentation
 
-**Start here:** [docs/TrustNav_Project_Brief.pdf](docs/TrustNav_Project_Brief.pdf) (5 pages: what, how to read the console, results, what comes next). The complete reference is [docs/TrustNav_Technical_Documentation.pdf](docs/TrustNav_Technical_Documentation.pdf) (29 pages, everything below in one file). Both are built from this folder with `python3 docs/build_pdf.py`.
+**Start here:** [docs/TrustNav_Project_Brief.pdf](docs/TrustNav_Project_Brief.pdf) (6 pages: what, how to read the console, results, what comes next, the team). The complete reference is [docs/TrustNav_Technical_Documentation.pdf](docs/TrustNav_Technical_Documentation.pdf) (30 pages, everything below in one file). Both are built from this folder with `python3 docs/build_pdf.py`.
 
 | Document | What it explains |
 |---|---|
@@ -29,6 +29,7 @@
 | [docs/COMPARISON.md](docs/COMPARISON.md) | How it differs from receiver flags, fixed probes, anti-jam hardware, fleet telematics, OSNMA and recent papers, with sources |
 | [docs/ROADMAP.md](docs/ROADMAP.md) | Prevention versus detection, and the improvement plan: real receiver, calibration, recorded attacks, second antenna, OSNMA |
 | [docs/ETHICS.md](docs/ETHICS.md) | Safety, legal and ethics: nothing transmitted, receive-only hardware, personal data, security of the system, honest claims |
+| [docs/TEAM.md](docs/TEAM.md) | Who is responsible for what in Group 2 |
 
 ## What it does
 

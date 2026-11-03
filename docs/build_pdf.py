@@ -29,6 +29,7 @@ SECTIONS = [  # (number, title, source markdown, anchor)
     ("7", "How TrustNav differs from what exists today", "COMPARISON.md"),
     ("8", "Roadmap: prevention and improvements", "ROADMAP.md"),
     ("9", "Safety, legal and ethics", "ETHICS.md"),
+    ("10", "Team and contributions", "TEAM.md"),
     ("A", "Appendix: running the project", None),
 ]
 BRIEF = [  # the four-page version for a reader in a hurry
@@ -36,9 +37,10 @@ BRIEF = [  # the four-page version for a reader in a hurry
     ("2", "The console, in plain words", None),
     ("3", "Results", None),
     ("4", "What comes next", None),
+    ("5", "Team and contributions", "TEAM.md"),
 ]
 LINK_NAMES = {"SUMMARY.md": "section 1", "OBJECTIVES.md": "section 2", "HOW_IT_WORKS.md": "section 3",
-              "CODE_GUIDE.md": "section 5", "COMPARISON.md": "section 7", "ROADMAP.md": "section 8", "ETHICS.md": "section 9"}
+              "CODE_GUIDE.md": "section 5", "COMPARISON.md": "section 7", "ROADMAP.md": "section 8", "ETHICS.md": "section 9", "TEAM.md": "section 10"}
 
 
 def md(text: str) -> str:
@@ -196,9 +198,9 @@ def appendix() -> str:
 - Source code and documentation: https://github.com/domail2karandeshmukh-cyber/trustnav
 - This document is built from the `docs/` folder of the repository with `python3 docs/build_pdf.py`.
 
-### Team and schedule
+### Schedule
 
-Group 2, MSc Cybersecurity and Data Science, ESAIP Angers: Karan Deshmukh, Sudheer Reddy Jogi, Niranjan Satheesh Thandassery, Venkata Pavan Kumar Sanam. Tutor: Sofiane Hamrioui. Three tutor meetings; oral examination on 13 November 2026, 09:35, room C201.
+Three tutor meetings; oral examination on 13 November 2026, 09:35, room C201. Team and contributions are in section 10.
 """
     return md(text)
 
