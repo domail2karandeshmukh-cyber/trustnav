@@ -1,4 +1,4 @@
--- NOT YET APPLIED. The 1-second demo tick writes one pg_cron log row per run;
+-- Applied 3 Nov 2026. The 1-second demo tick writes one pg_cron log row per run;
 -- this keeps only the last hour and trims old passcode failures.
 create or replace function public.trim_cron_logs()
 returns void language sql security definer set search_path = public, cron
