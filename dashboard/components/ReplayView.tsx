@@ -118,7 +118,12 @@ export default function ReplayView({ data, initial, theme, onHandle, onScenario,
     if (cur.length) segs.push(cur);
     return segs;
   }, [shown]);
-  const shield = frame?.resp && frame.resp.mode === "hold" && frame.resp.lat != null ? { lat: frame.resp.lat, lon: frame.resp.lon! } : null;
+  const shields = useMemo(() => {
+    const r = frame?.resp;
+    if (!r || r.mode !== "hold" || r.lat == null) return [];
+    const from: [number, number] | undefined = frame.lat != null ? [frame.lat, frame.lon!] : undefined;
+    return [{ id: sc.device_id, lat: r.lat, lon: r.lon!, from, label: r.gap_m != null ? `${dist(r.gap_m)} refused` : "estimate" }];
+  }, [frame, sc.device_id]);
   const incidents = data.incidents.filter((x) => x.scenario === sc.slug);
   // the honest part of the run: where the platform really went
   const extent = useMemo(() => sc.frames.filter((f) => f.tl).map((f) => f.tl as [number, number]), [sc]);
@@ -203,8 +208,8 @@ export default function ReplayView({ data, initial, theme, onHandle, onScenario,
         <div className="stage-mapwrap" hidden={stage !== "map"}>
         <MapView theme={theme} glideMs={playing ? Math.min(950, 1000 / rate) : 0} onCamera={(api) => { cam.current = api; if (autoRef.current) { autoRef.current = false; setTimeout(() => startRef.current(), 600); } }}
           follow={story && beat?.camera === "close" && !story.holding ? sc.device_id : null} fitKey={`${sc.slug}${offBy != null && offBy > 1500 ? ":far" : ""}`} routes={route ? [{ id: route.slug, points: route.points }] : []}
-          tracks={[{ id: sc.slug, frames: shown }]} truth={truth} ghost={ghost} extent={extent} protectedPath={protectedPath} shield={shield}
-          markers={frame?.lat != null ? [{ id: sc.device_id, label: sc.device_id, lat: frame.lat, lon: frame.lon!, status: frame.st, heading: frame.hdg, kind: sc.profile === "small_uav" ? "drone" : "vehicle", alarm: frame.trust < 50, selected: true }] : []}
+          tracks={[{ id: sc.slug, frames: shown }]} truth={truth} ghost={ghost} extent={extent} protectedPath={protectedPath} shields={shields}
+          markers={frame?.lat != null ? [{ id: sc.device_id, label: sc.device_id, lat: frame.lat, lon: frame.lon!, status: frame.st, heading: frame.hdg, kind: sc.profile === "small_uav" ? "drone" : "vehicle", alarm: frame.trust < 50, selected: true, trust: frame.trust, held: frame.resp?.mode === "hold" }] : []}
           note={frame?.fix === false ? "No position fix" : undefined}
           padding={wide ? { top: 80, right: 60, bottom: 40, left: 40 } : { top: 76, right: 24, bottom: 24, left: 24 }} />
         </div>

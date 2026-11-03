@@ -90,6 +90,7 @@ export default function Console() {
       run: () => openScenario(s.slug),
     }));
     out.push({ id: "story", group: "Pages", title: "Watch the attack", hint: "narrated story", keywords: "story demo film", run: () => openScenario("teleport_spoof", true) });
+    out.push({ id: "present", group: "Pages", title: "Presentation mode", hint: "P", keywords: "tour cinematic auto camera", run: () => { setView("live"); live.current?.togglePresent(); } });
     out.push({ id: "theme", group: "Settings", title: theme === "dark" ? "Switch to light mode" : "Switch to dark mode", hint: "D", run: toggle });
     out.push({ id: "tour", group: "Settings", title: "Show the welcome tour again", run: () => { resetTour(); setView("live"); location.reload(); } });
     out.push({ id: "intro", group: "Settings", title: "Show the opening screen again", run: () => { resetHero(); window.location.hash = "#live"; location.reload(); } });
@@ -107,6 +108,7 @@ export default function Console() {
     { keys: "f", run: () => { if (view === "live") live.current?.toggleFollow(); } },
     { keys: "r", run: () => { if (view === "live") live.current?.toggleReport(); } },
     { keys: "t", run: () => { if (view === "live") live.current?.toggleTimeline(); } },
+    { keys: "p", run: () => { if (view === "live") live.current?.togglePresent(); } },
     { keys: "escape", run: () => { if (palette) setPalette(false); else if (view === "live") live.current?.select(null); } },
     { keys: "space", run: () => { if (view === "replay") replayH.current?.toggle(); } },
     { keys: "arrowleft", run: () => { if (view === "replay") replayH.current?.step(-1); } },

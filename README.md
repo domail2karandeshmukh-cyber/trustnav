@@ -91,7 +91,9 @@ npm run dev
 
 Opening screen offers a narrated 60-second story of an attack (also `#replay?scenario=teleport_spoof&story=1`, or "Watch the attack" in the search). The map is tilted with 3D buildings; `T` opens the fleet timeline dock.
 
-Keyboard: `1`–`4` switch pages, `⌘K` / `Ctrl K` opens the search, `J`/`K` step through platforms, `Esc` goes back, `F` follows the selected platform, `R` opens its incident report, `D` toggles dark mode, `Space` and the arrow keys drive the replay.
+**Live console** (v6): a fleet KPI strip (fleet trust, platforms, open incidents, positions refused and the worst lie refused); markers with a trust ring and score; a refused fix drawn hollow with a shield at the protected position, the dashed lie between them and its length; alert cards with sparklines, the response action and an acknowledge button; an operator playbook (what to do now) for any platform on hold; and **presentation mode** (`P`), where the camera visits every platform, incidents first, with a caption, for a jury or a wall screen.
+
+Keyboard: `1`–`4` switch pages, `⌘K` / `Ctrl K` opens the search, `J`/`K` step through platforms, `Esc` goes back, `F` follows the selected platform, `R` opens its incident report, `T` the fleet timeline, `P` presentation mode, `D` toggles dark mode, `Space` and the arrow keys drive the replay.
 
 End-to-end checks (every view, interactions, shortcuts, dark mode, phone layout, axe accessibility scan, JS budget):
 

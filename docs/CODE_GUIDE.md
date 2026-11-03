@@ -16,7 +16,7 @@ trustnav/
 │   ├── components/                the screens and widgets
 │   ├── lib/                       data hook, types, helpers
 │   ├── public/data/               recorded data the page can play without a database
-│   └── tests/e2e.py               59 end-to-end checks
+│   └── tests/e2e.py               73 end-to-end checks
 └── supabase/
     ├── migrations/                database schema and functions, in order
     ├── functions/ingest/          the secure write endpoint
@@ -113,8 +113,8 @@ Stack: Next.js 15, React 19, TypeScript, MapLibre GL, supabase-js, self-hosted B
 | File | What it does |
 |---|---|
 | `Console.tsx` | The shell: rail navigation, hash routing, command palette commands, shortcuts, hero and tour |
-| `LiveView.tsx` | Live page: fleet list, device detail, alert feed, status strip, toasts, timeline dock |
-| `MapView.tsx` | MapLibre map: light/dark styles, 3D buildings, smooth marker gliding, fading trails, follow camera, the protected path and shield marker of the response layer |
+| `LiveView.tsx` | Live page: fleet list, device detail (with the response line and the operator playbook), fleet KPI strip, alert feed with sparklines, actions and acknowledgements, status strip, toasts, timeline dock, presentation mode |
+| `MapView.tsx` | MapLibre map: light/dark styles, 3D buildings, markers with a trust ring and score (hollow when the fix is refused), smooth gliding, fading trails, follow camera, the protected path, shield markers with the size of the refused lie and the dashed link to the reported fix, framing of a whole lie on selection |
 | `ReplayView.tsx` | Scenario replay with scrubber, ghost "real position", story mode |
 | `SpaceTime.tsx` | Canvas 4D view: ground grid, time axis, trust-coloured ribbons |
 | `ResultsView.tsx`, `MethodView.tsx` | Evaluation numbers and method/limitations |
@@ -124,7 +124,7 @@ Stack: Next.js 15, React 19, TypeScript, MapLibre GL, supabase-js, self-hosted B
 
 ### Tests (`dashboard/tests/e2e.py`)
 
-59 Playwright checks: every view, interactions, keyboard shortcuts, command palette, report, story mode, space-time, the response layer in the replay panel, map and results, the comparison table, phone layout, accessibility (axe), and a JavaScript size budget.
+73 Playwright checks: every view, interactions, keyboard shortcuts, command palette, report, story mode, space-time, the response layer in the replay panel, map and results, the comparison table, the live KPI strip, trust-ring markers, live shields and lie labels, alert sparklines, actions and acknowledgements, the playbook, presentation mode, phone layout, accessibility (axe), and a JavaScript size budget.
 
 ## Deployment
 

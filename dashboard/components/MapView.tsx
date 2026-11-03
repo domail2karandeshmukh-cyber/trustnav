@@ -11,8 +11,14 @@ export interface MapTrack { id: string; frames: Frame[]; faded?: boolean }
 export interface MapMarker {
   id: string; label: string; lat: number; lon: number; status: Status; heading: number | null;
   kind: "vehicle" | "drone"; alarm?: boolean; selected?: boolean;
+  /** 0-100, drawn as the ring around the glyph */
+  trust?: number;
+  /** the response layer is refusing this fix: the marker shows where the receiver claims to be */
+  held?: boolean;
 }
 export interface Ghost { lat: number; lon: number; from: [number, number] }
+/** the response layer's estimate while a fix is refused */
+export interface Shield { id: string; lat: number; lon: number; label?: string; from?: [number, number] }
 
 interface Props {
   routes: MapRoute[];
@@ -24,12 +30,12 @@ interface Props {
   ghost?: Ghost | null;
   /** the response layer's estimate while a fix is refused, one line per hold */
   protectedPath?: [number, number][][];
-  /** the protected position right now, when a fix is being refused */
-  shield?: { lat: number; lon: number } | null;
+  /** the protected positions right now, one per platform whose fix is being refused */
+  shields?: Shield[];
   fitKey: string;
   /** extra [lat, lon] points the initial view must include */
   extent?: [number, number][];
-  focus?: { lat: number; lon: number; key: string } | null;
+  focus?: { lat: number; lon: number; key: string; bearing?: number; zoom?: number; bounds?: [number, number][] } | null;
   /** keep the selected marker centred as it moves */
   follow?: string | null;
   padding?: { top: number; right: number; bottom: number; left: number };
@@ -135,13 +141,13 @@ const lerpAngle = (a: number, b: number, t: number) => {
 
 interface Anim { from: [number, number]; to: [number, number]; hFrom: number; hTo: number; t0: number; dur: number }
 
-export default function MapView({ routes, tracks, markers, truth, ghost, protectedPath, shield, fitKey, extent, focus, follow, padding, onMarkerClick, note, theme = "light", glideMs = 950, onSnapshot, onCamera, cinematic = true }: Props) {
+export default function MapView({ routes, tracks, markers, truth, ghost, protectedPath, shields, fitKey, extent, focus, follow, padding, onMarkerClick, note, theme = "light", glideMs = 950, onSnapshot, onCamera, cinematic = true }: Props) {
   const box = useRef<HTMLDivElement>(null);
   const mapRef = useRef<any>(null);
   const libRef = useRef<any>(null);
-  const markerRefs = useRef<Map<string, { m: any; el: HTMLDivElement; icon: HTMLElement | null; sig: string; anim: Anim | null; heading: number }>>(new Map());
+  const markerRefs = useRef<Map<string, { m: any; el: HTMLDivElement; icon: HTMLElement | null; sig: string; anim: Anim | null; heading: number; trust: number }>>(new Map());
   const ghostRef = useRef<any>(null);
-  const shieldRef = useRef<any>(null);
+  const shieldRefs = useRef<Map<string, { m: any; el: HTMLElement; sig: string }>>(new Map());
   const [ready, setReady] = useState(0);
   const [fallback, setFallback] = useState(false);
   const clickRef = useRef(onMarkerClick);
@@ -176,6 +182,7 @@ export default function MapView({ routes, tracks, markers, truth, ghost, protect
       map.addSource("truth", { type: "geojson", data: lineFC([]) });
       map.addSource("link", { type: "geojson", data: lineFC([]) });
       map.addSource("protect", { type: "geojson", data: lineFC([]) });
+      map.addSource("protect-link", { type: "geojson", data: lineFC([]) });
       map.addSource("tracks", { type: "geojson", data: { type: "FeatureCollection", features: [] } });
       map.addLayer({ id: "routes", type: "line", source: "routes", paint: { "line-color": pal.route, "line-width": 2, "line-opacity": 0.5, "line-dasharray": [2.5, 2] } });
       map.addLayer({ id: "truth", type: "line", source: "truth", paint: { "line-color": pal.truth, "line-width": 2, "line-opacity": 0.6, "line-dasharray": [0.6, 1.6] }, layout: { "line-cap": "round" } });
@@ -188,6 +195,7 @@ export default function MapView({ routes, tracks, markers, truth, ghost, protect
       map.addLayer({ id: "link", type: "line", source: "link", paint: { "line-color": pal.link, "line-width": 1.6, "line-dasharray": [1.5, 1.2] } });
       map.addLayer({ id: "protect-case", type: "line", source: "protect", paint: { "line-color": pal.casing, "line-width": 7, "line-opacity": 0.9 }, layout: { "line-cap": "round", "line-join": "round" } });
       map.addLayer({ id: "protect", type: "line", source: "protect", paint: { "line-color": pal.protect, "line-width": 3.4 }, layout: { "line-cap": "round", "line-join": "round" } });
+      map.addLayer({ id: "protect-link", type: "line", source: "protect-link", paint: { "line-color": pal.protect, "line-width": 1.8, "line-opacity": 0.9, "line-dasharray": [1.2, 1.6] } });
     }
     setReady((v) => v + 1);
   };
@@ -230,8 +238,8 @@ export default function MapView({ routes, tracks, markers, truth, ghost, protect
       markerRefs.current.clear();
       ghostRef.current?.remove();
       ghostRef.current = null;
-      shieldRef.current?.remove();
-      shieldRef.current = null;
+      shieldRefs.current.forEach(({ m }) => m.remove());
+      shieldRefs.current.clear();
       map?.remove();
       mapRef.current = null;
     };
@@ -257,22 +265,34 @@ export default function MapView({ routes, tracks, markers, truth, ghost, protect
     map.getSource("tracks").setData(trackFeatures(tracks));
     map.getSource("link").setData(lineFC(ghost ? [[ghost.from, [ghost.lat, ghost.lon]]] : []));
     map.getSource("protect")?.setData(lineFC(protectedPath ?? []));
-  }, [ready, routes, tracks, truth, ghost, protectedPath]);
+    map.getSource("protect-link")?.setData(lineFC((shields ?? []).filter((s) => s.from).map((s) => [s.from!, [s.lat, s.lon]])));
+  }, [ready, routes, tracks, truth, ghost, protectedPath, shields]);
 
-  // shield marker: the position the response layer hands on while the fix is refused
+  // shield markers: the positions the response layer hands on while a fix is refused
   useEffect(() => {
     const map = mapRef.current, lib = libRef.current;
     if (!ready || !map || !lib) return;
-    if (!shield) { shieldRef.current?.remove(); shieldRef.current = null; return; }
-    if (!shieldRef.current) {
-      const el = document.createElement("div");
-      el.className = "shield";
-      el.title = "Protected position";
-      el.innerHTML = '<svg width="22" height="24" viewBox="0 0 42 46"><path d="M21 2 L39 9 V22 C39 33 31 41 21 44 C11 41 3 33 3 22 V9 Z"/></svg>';
-      shieldRef.current = new lib.Marker({ element: el, anchor: "center" }).setLngLat([shield.lon, shield.lat]).addTo(map);
+    const seen = new Set<string>();
+    for (const sh of shields ?? []) {
+      seen.add(sh.id);
+      let e = shieldRefs.current.get(sh.id);
+      if (!e) {
+        const el = document.createElement("div");
+        el.className = "shield";
+        el.title = "Protected position";
+        const m = new lib.Marker({ element: el, anchor: "center" }).setLngLat([sh.lon, sh.lat]).addTo(map);
+        e = { m, el, sig: "" };
+        shieldRefs.current.set(sh.id, e);
+      }
+      const sig = sh.label ?? "";
+      if (sig !== e.sig) {
+        e.sig = sig;
+        e.el.innerHTML = `<svg width="22" height="24" viewBox="0 0 42 46"><path d="M21 2 L39 9 V22 C39 33 31 41 21 44 C11 41 3 33 3 22 V9 Z"/></svg>${sh.label ? `<b>${sh.label}</b>` : ""}`;
+      }
+      e.m.setLngLat([sh.lon, sh.lat]);
     }
-    shieldRef.current.setLngLat([shield.lon, shield.lat]);
-  }, [ready, shield]);
+    shieldRefs.current.forEach((e, id) => { if (!seen.has(id)) { e.m.remove(); shieldRefs.current.delete(id); } });
+  }, [ready, shields]);
 
   // animation loop: glide every marker toward its latest fix
   const tick = () => {
@@ -314,7 +334,7 @@ export default function MapView({ routes, tracks, markers, truth, ghost, protect
         el.addEventListener("click", (ev) => { ev.stopPropagation(); clickRef.current?.(mk.id); });
         el.addEventListener("keydown", (ev) => { if (ev.key === "Enter" || ev.key === " ") { ev.preventDefault(); clickRef.current?.(mk.id); } });
         const m = new lib.Marker({ element: el, anchor: "center" }).setLngLat(target).addTo(map);
-        entry = { m, el, icon: null, sig: "", anim: null, heading: hTo };
+        entry = { m, el, icon: null, sig: "", anim: null, heading: hTo, trust: -1 };
         markerRefs.current.set(mk.id, entry);
       } else {
         const cur = entry.m.getLngLat();
@@ -328,16 +348,28 @@ export default function MapView({ routes, tracks, markers, truth, ghost, protect
         }
       }
       const color = STATUS_HEX[mk.status];
-      const sig = `${mk.status}|${mk.selected}|${mk.alarm}|${mk.kind}`;
+      const sig = `${mk.status}|${mk.selected}|${mk.alarm}|${mk.kind}|${mk.held}`;
       if (sig !== entry.sig) {
         entry.sig = sig;
-        entry.el.className = `mk${mk.selected ? " sel" : ""}${mk.alarm ? " alarm" : ""}`;
+        entry.el.className = `mk${mk.selected ? " sel" : ""}${mk.alarm ? " alarm" : ""}${mk.held ? " held" : ""}`;
         entry.el.style.setProperty("--c", color);
         entry.el.style.zIndex = mk.selected ? "3" : mk.alarm ? "2" : "1";
-        entry.el.setAttribute("aria-label", `${mk.label}, ${mk.status.toLowerCase()}`);
-        entry.el.innerHTML = `<span class="mk-ring"></span><span class="mk-icon">${mk.kind === "drone" ? droneSvg(color) : vehicleSvg(color, 0)}</span><span class="mk-tag">${mk.label}</span>`;
+        entry.el.setAttribute("aria-label", `${mk.label}, ${mk.status.toLowerCase()}${mk.held ? ", position refused" : ""}`);
+        entry.el.innerHTML = `<span class="mk-ring"></span>`
+          + `<svg class="mk-arc" viewBox="0 0 44 44" aria-hidden="true"><circle class="mk-arc-bg" cx="22" cy="22" r="19"/><circle class="mk-arc-fg" cx="22" cy="22" r="19" pathLength="100"/></svg>`
+          + `<span class="mk-icon">${mk.kind === "drone" ? droneSvg(color) : vehicleSvg(color, 0)}</span>`
+          + `<span class="mk-tag"><b>${mk.label}</b><em>${mk.trust == null ? "" : Math.round(mk.trust)}</em></span>`;
         entry.icon = mk.kind === "drone" ? null : (entry.el.querySelector(".mk-icon") as HTMLElement);
         if (entry.icon) entry.icon.style.transform = `rotate(${entry.heading}deg)`;
+        entry.trust = -1;
+      }
+      const tr = mk.trust == null ? null : Math.round(mk.trust);
+      if (tr !== null && tr !== entry.trust) {
+        entry.trust = tr;
+        const arc = entry.el.querySelector(".mk-arc-fg") as SVGCircleElement | null;
+        if (arc) arc.style.strokeDashoffset = String(100 - tr);
+        const num = entry.el.querySelector(".mk-tag em");
+        if (num) num.textContent = String(tr);
       }
     }
     markerRefs.current.forEach((entry, id) => {
@@ -424,7 +456,15 @@ export default function MapView({ routes, tracks, markers, truth, ghost, protect
   useEffect(() => {
     const map = mapRef.current;
     if (!ready || !map || !focus || !visible()) return;
-    map.flyTo({ center: [focus.lon, focus.lat], zoom: Math.max(map.getZoom(), 15), pitch: cinematicRef.current ? 55 : 0, padding: pad, duration: 1400, essential: true });
+    const lib = libRef.current;
+    if (focus.bounds && focus.bounds.length > 1 && lib) {
+      // a refused fix and its estimate: show the whole lie
+      const b = new lib.LngLatBounds([focus.bounds[0][1], focus.bounds[0][0]], [focus.bounds[0][1], focus.bounds[0][0]]);
+      focus.bounds.forEach(([la, lo]) => b.extend([lo, la]));
+      map.fitBounds(b, { padding: { top: pad.top + 60, right: pad.right + 60, bottom: pad.bottom + 60, left: pad.left + 60 }, maxZoom: 15.5, pitch: cinematicRef.current ? 30 : 0, bearing: focus.bearing ?? map.getBearing(), duration: 1400, essential: true });
+      return;
+    }
+    map.flyTo({ center: [focus.lon, focus.lat], zoom: focus.zoom ?? Math.max(map.getZoom(), 15), pitch: cinematicRef.current ? 55 : 0, bearing: focus.bearing ?? map.getBearing(), padding: pad, duration: 1400, essential: true });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ready > 0, focus?.key]);
 

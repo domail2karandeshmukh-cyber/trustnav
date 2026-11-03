@@ -14,7 +14,11 @@ const typing = (t: EventTarget | null) => {
   const el = t as HTMLElement | null;
   if (!el) return false;
   const tag = el.tagName;
-  return tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT" || el.isContentEditable;
+  if (tag === "INPUT") {
+    const type = (el as HTMLInputElement).type;
+    return !(type === "checkbox" || type === "radio" || type === "button" || type === "submit" || type === "range");
+  }
+  return tag === "TEXTAREA" || tag === "SELECT" || el.isContentEditable;
 };
 
 export function useShortcuts(list: Shortcut[], enabled = true) {
