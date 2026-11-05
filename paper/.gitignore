@@ -1,0 +1,16 @@
+*.aux
+*.log
+*.out
+*.bbl
+*.blg
+*.synctex.gz
+*.fdb_latexmk
+*.fls
+*.toc
+pv-*.png
+p[0-9]-*.png
+sheet.png
+fig1.png
+figs23.png
+prev-*.png
+t.*
