@@ -5,7 +5,7 @@ import { IconClose, IconPlay } from "./Icons";
 import { STATUS_COLOR } from "@/lib/format";
 
 /** "How to read this screen": the whole console in plain words, one page, for a first-time viewer. */
-export default function Guide({ onClose, onStory, onPresent }: { onClose: () => void; onStory: () => void; onPresent: () => void }) {
+export default function Guide({ onClose, onStory, onPresent, onExplain }: { onClose: () => void; onStory: () => void; onPresent: () => void; onExplain?: () => void }) {
   useEffect(() => {
     const on = (e: KeyboardEvent) => { if (e.key === "Escape") { e.stopPropagation(); onClose(); } };
     window.addEventListener("keydown", on, true);
@@ -61,6 +61,7 @@ export default function Guide({ onClose, onStory, onPresent }: { onClose: () => 
 
         <div className="guide-actions">
           <button className="btn primary" onClick={() => { onClose(); onStory(); }}><IconPlay size={16} /> Watch an attack, 60 seconds</button>
+          {onExplain && <button className="btn" onClick={() => { onClose(); onExplain(); }}>Explain it to me, with voice</button>}
           <button className="btn" onClick={() => { onClose(); onPresent(); }}>Presentation mode (P)</button>
           <span className="guide-hint">Press <kbd>?</kbd> any time to see this again. All attacks are simulated in software.</span>
         </div>

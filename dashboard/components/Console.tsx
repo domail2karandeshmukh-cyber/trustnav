@@ -9,6 +9,10 @@ import CommandPalette, { type Command } from "./CommandPalette";
 import Tour, { resetTour } from "./Tour";
 import Hero, { resetHero } from "./Hero";
 import Guide from "./Guide";
+import dynamic from "next/dynamic";
+
+// the explainer carries ten languages of narration, so it loads only when asked for
+const Explainer = dynamic(() => import("./Explainer"), { ssr: false });
 import { ToastProvider } from "./Toasts";
 import { IconHelp, IconLive, IconMethod, IconMoon, IconReplay, IconResults, IconSearch, IconSun, Wordmark } from "./Icons";
 import type { ReplayData, RouteGeom } from "@/lib/types";
@@ -42,6 +46,8 @@ export default function Console() {
   const [autoStory, setAutoStory] = useState(false);
   const [palette, setPalette] = useState(false);
   const [guide, setGuide] = useState(false);
+  const [explain, setExplain] = useState(false);
+  const startExplain = useCallback(() => { setGuide(false); setPalette(false); setView("live"); window.location.hash = "#live"; setTimeout(() => setExplain(true), 50); }, []);
   const [tourOk, setTourOk] = useState(false);
   const { theme, toggle } = useTheme();
   const live = useRef<LiveHandle | null>(null);
@@ -94,6 +100,7 @@ export default function Console() {
     out.push({ id: "story", group: "Pages", title: "Watch the attack", hint: "narrated story", keywords: "story demo film", run: () => openScenario("teleport_spoof", true) });
     out.push({ id: "present", group: "Pages", title: "Presentation mode", hint: "P", keywords: "tour cinematic auto camera", run: () => { setView("live"); live.current?.togglePresent(); } });
     out.push({ id: "guide", group: "Pages", title: "How to read this screen", hint: "?", keywords: "guide help legend explain", run: () => setGuide(true) });
+    out.push({ id: "explain", group: "Pages", title: "Narrated explainer (10 languages)", hint: "voice", keywords: "video voice narration explain language français hindi marathi", run: startExplain });
     out.push({ id: "theme", group: "Settings", title: theme === "dark" ? "Switch to light mode" : "Switch to dark mode", hint: "D", run: toggle });
     out.push({ id: "tour", group: "Settings", title: "Show the welcome tour again", run: () => { resetTour(); setView("live"); location.reload(); } });
     out.push({ id: "intro", group: "Settings", title: "Show the opening screen again", run: () => { resetHero(); window.location.hash = "#live"; location.reload(); } });
@@ -121,7 +128,7 @@ export default function Console() {
     { keys: "shift+arrowright", run: () => { if (view === "replay") replayH.current?.step(10); } },
     { keys: "j", run: () => { if (view === "live") live.current?.select((cur) => stepDevice(live.current, cur, 1)); } },
     { keys: "k", run: () => { if (view === "live") live.current?.select((cur) => stepDevice(live.current, cur, -1)); } },
-  ], [palette, view, toggle]), !palette);
+  ], [palette, view, toggle]), !palette && !explain);
 
   const modKey = isMac() ? "⌘" : "Ctrl";
 
@@ -160,9 +167,10 @@ export default function Console() {
         </main>
 
         <CommandPalette open={palette} onClose={() => setPalette(false)} commands={commands} />
-        {guide && <Guide onClose={() => setGuide(false)} onStory={() => openScenario("teleport_spoof", true)} onPresent={() => { setView("live"); live.current?.togglePresent(); }} />}
+        {guide && <Guide onClose={() => setGuide(false)} onStory={() => openScenario("teleport_spoof", true)} onPresent={() => { setView("live"); live.current?.togglePresent(); }} onExplain={startExplain} />}
+        {explain && view === "live" && live.current && <Explainer api={live.current.explain} onClose={() => setExplain(false)} />}
         {view === "live" && tourOk && <Tour onGuide={() => setGuide(true)} />}
-        {view === "live" && <Hero onStory={() => openScenario("teleport_spoof", true)} onConsole={() => setTourOk(true)} />}
+        {view === "live" && <Hero onStory={() => openScenario("teleport_spoof", true)} onConsole={() => setTourOk(true)} onExplain={startExplain} />}
       </div>
     </ToastProvider>
   );

@@ -672,3 +672,17 @@ kbd { display: inline-block; min-width: 18px; padding: 0 5px; border: 1px solid 
 .guide-actions .btn { display: inline-flex; align-items: center; gap: 6px; }
 .guide-hint { font-size: 12.5px; color: var(--ink-3); margin-left: auto; }
 kbd { padding: 1px 5px; border: 1px solid var(--line); border-bottom-width: 2px; border-radius: 5px; font: 600 11px/1.4 "Barlow", sans-serif; }
+
+/* ---------- v8: narrated explainer ---------- */
+.spot { position: fixed; z-index: 55; border: 2.5px solid #3fd9c0; border-radius: 12px; box-shadow: 0 0 28px rgba(63, 217, 192, .45); pointer-events: none; transition: left .45s cubic-bezier(.2, .8, .2, 1), top .45s cubic-bezier(.2, .8, .2, 1), width .45s, height .45s; }
+.spot-dim { position: fixed; z-index: 54; background: rgba(10, 16, 28, .32); pointer-events: none; transition: all .45s cubic-bezier(.2, .8, .2, 1); }
+.caption.explainer { z-index: 56; bottom: 84px; width: min(760px, calc(100% - 32px)); }
+.explain-text { font-size: 17px; line-height: 1.5; min-height: 3.2em; }
+.explain-note { margin: 6px 0 0 !important; font-size: 12.5px; opacity: .7; }
+.explain-actions { flex-wrap: wrap; }
+.lang-pick { display: inline-flex; align-items: center; gap: 8px; margin-right: auto; font-size: 12.5px; opacity: .9; }
+.lang-pick select { padding: 5px 8px; border-radius: 8px; border: 1px solid color-mix(in srgb, var(--on-ink) 30%, transparent); background: color-mix(in srgb, var(--on-ink) 10%, transparent); color: inherit; font: inherit; font-size: 13px; }
+.lang-pick select option { color: #14233b; }
+.caption .btn:disabled { opacity: .35; }
+.hero-actions .hero-btn { white-space: normal; }
+@media (max-width: 899px) { .caption.explainer { bottom: 8px; } .spot, .spot-dim { display: none; } }

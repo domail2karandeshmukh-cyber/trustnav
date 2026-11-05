@@ -6,7 +6,7 @@ import { IconPlay } from "./Icons";
 const KEY = "trustnav-intro-seen";
 
 /** Full-screen opening over the live map: one sentence, two doors. Shown once per browser session. */
-export default function Hero({ onStory, onConsole }: { onStory: () => void; onConsole: () => void }) {
+export default function Hero({ onStory, onConsole, onExplain }: { onStory: () => void; onConsole: () => void; onExplain?: () => void }) {
   const [show, setShow] = useState(false);
   useEffect(() => {
     try { if (!sessionStorage.getItem(KEY)) setShow(true); else onConsole(); } catch { setShow(true); }
@@ -29,6 +29,7 @@ export default function Hero({ onStory, onConsole }: { onStory: () => void; onCo
         <p>Every second, for every vehicle and drone, TrustNav scores how much its satellite position can be believed, catches spoofing and jamming, and says why in plain words.</p>
         <div className="hero-actions">
           <button className="btn hero-btn primary" onClick={() => { close(); onStory(); }}><IconPlay size={18} /> Watch an attack, 60 seconds</button>
+          {onExplain && <button className="btn hero-btn" onClick={() => { close(); onConsole(); onExplain(); }}>Explain it to me, with voice (10 languages)</button>}
           <button className="btn hero-btn" onClick={() => { close(); onConsole(); }}>Open the live console</button>
         </div>
         <div className="hero-facts">

@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState, type Dispatch, type ReactNode, type SetStateAction } from "react";
-import MapView from "./MapView";
+import MapView, { type CameraApi } from "./MapView";
+import type { ExplainApi } from "./Explainer";
 import SpaceTime from "./SpaceTime";
 import { ChartKey, Evidence, OsnmaLine, PlainVerdict, ResponseLine, Signals, StatusWord, TrustChart, TrustFigure, TrustTape } from "./Instruments";
 import { plainFleet } from "@/lib/plain";
@@ -23,6 +24,8 @@ export interface LiveHandle {
   toggleReport: () => void;
   toggleTimeline: () => void;
   togglePresent: () => void;
+  /** what the narrated explainer may do to this view */
+  explain: ExplainApi;
 }
 
 const ORDER: Status[] = ["UNTRUSTED", "SUSPICIOUS", "DEGRADED", "TRUSTED"];
@@ -41,11 +44,13 @@ export default function LiveView({ routes, theme, onHandle, visible, onGuide }: 
   const [present, setPresent] = useState(false);
   const [presentBearing, setPresentBearing] = useState(0);
   const [acked, setAcked] = useState<Set<string>>(() => new Set());
+  const [explaining, setExplaining] = useState(false);
   const snap = useRef<(() => string | null) | null>(null);
   const seenInc = useRef<Set<string>>(new Set());
   const seenReady = useRef(false);
   const visibleRef = useRef(visible); visibleRef.current = visible;
   const presentRef = useRef(false); presentRef.current = present;
+  const cam = useRef<CameraApi | null>(null);
 
   const latest = useMemo(() => {
     const m: Record<string, Frame> = {};
@@ -71,14 +76,39 @@ export default function LiveView({ routes, theme, onHandle, visible, onGuide }: 
 
   // any manual choice ends a presentation
   const pick: Dispatch<SetStateAction<string | null>> = (v) => { setPresent(false); setSelected(v); };
+  // the explainer reads live data through refs so its functions stay stable
+  const latestRef = useRef(latest); latestRef.current = latest;
+  const activeRef = useRef(active); activeRef.current = active;
+  const explain = useMemo<ExplainApi>(() => ({
+    fitAll: () => { setPresent(false); setStage("map"); setFollow(false); setSelected(null); setTimeout(() => cam.current?.fit(), 50); },
+    selectTrusted: () => {
+      const l = latestRef.current;
+      const d = activeRef.current.filter((x) => l[x.id]?.lat != null && l[x.id].resp?.mode !== "hold").sort((a, b) => l[b.id].trust - l[a.id].trust)[0];
+      if (!d) return null;
+      setPresent(false); setStage("map"); setSelected(d.id);
+      return { name: d.name, trust: l[d.id].trust };
+    },
+    selectHeld: () => {
+      const l = latestRef.current;
+      const d = activeRef.current.filter((x) => l[x.id]?.resp?.mode === "hold" && l[x.id].resp?.lat != null).sort((a, b) => (l[b.id].resp?.gap_m ?? 0) - (l[a.id].resp?.gap_m ?? 0))[0];
+      if (!d) return null;
+      setPresent(false); setStage("map"); setSelected(d.id);
+      const g = l[d.id].resp?.gap_m;
+      return { name: d.name, gap: g != null ? dist(g) : "" };
+    },
+    deselect: () => { setSelected(null); setFollow(false); },
+    openAlerts: () => setAlertsOpen(true),
+    setActive: (on) => setExplaining(on),
+  }), []);
   useEffect(() => { onHandle?.({
     devices: active, select: pick, selected,
     toggleFollow: () => setFollow((v) => !v),
     toggleReport: () => setReport((v) => !v && !!selectedRef.current),
     toggleTimeline: () => setTimeline((v) => !v),
     togglePresent: () => setPresent((v) => !v),
+    explain,
   }); // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [active, selected, onHandle]);
+  }, [active, selected, onHandle, explain]);
   const selectedRef = useRef(selected); selectedRef.current = selected;
   // Esc deselects before the report's own listener runs, so the report state must follow the selection
   useEffect(() => { if (!selected) setReport(false); }, [selected]);
@@ -229,8 +259,8 @@ export default function LiveView({ routes, theme, onHandle, visible, onGuide }: 
         )}
         <div className="stage-mapwrap" hidden={stage !== "map"}>
         <MapView fitKey={fitKey} routes={mapRoutes} tracks={tracks} markers={markers} onMarkerClick={pick} focus={focus} theme={theme} shields={shields} protectedPath={protectedPath}
-          follow={follow && selected ? selected : null} glideMs={visible && stage === "map" ? 950 : 0} onSnapshot={(fn) => { snap.current = fn; }}
-          padding={wide ? { top: 110, right: alertsOpen ? 360 : 60, bottom: present ? 270 : 90, left: 40 } : { top: 30, right: 30, bottom: 30, left: 30 }} />
+          follow={follow && selected ? selected : null} glideMs={visible && stage === "map" ? 950 : 0} onSnapshot={(fn) => { snap.current = fn; }} onCamera={(a) => { cam.current = a; }}
+          padding={wide ? { top: 110, right: alertsOpen ? 360 : 60, bottom: present || explaining ? 300 : 90, left: 40 } : { top: 30, right: 30, bottom: 30, left: 30 }} />
         </div>
         {wide && fleet.source !== "connecting" && stage === "map" && (
           <FleetKpis trust={meanTrust} counts={counts} open={open.length} held={held} worstLie={worstLie} />

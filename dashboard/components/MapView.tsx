@@ -456,15 +456,26 @@ export default function MapView({ routes, tracks, markers, truth, ghost, protect
   useEffect(() => {
     const map = mapRef.current;
     if (!ready || !map || !focus || !visible()) return;
-    const lib = libRef.current;
-    if (focus.bounds && focus.bounds.length > 1 && lib) {
-      // a refused fix and its estimate: show the whole lie
-      const b = new lib.LngLatBounds([focus.bounds[0][1], focus.bounds[0][0]], [focus.bounds[0][1], focus.bounds[0][0]]);
-      focus.bounds.forEach(([la, lo]) => b.extend([lo, la]));
-      map.fitBounds(b, { padding: { top: pad.top + 60, right: pad.right + 60, bottom: pad.bottom + 60, left: pad.left + 60 }, maxZoom: 15.5, pitch: cinematicRef.current ? 30 : 0, bearing: focus.bearing ?? map.getBearing(), duration: 1400, essential: true });
+    if (focus.bounds && focus.bounds.length > 1) {
+      // a refused fix and its estimate: frame the whole lie. The camera is computed by hand
+      // (midpoint plus a zoom from the distance) because fitBounds refuses large paddings and
+      // can produce an invalid camera under pitch and bearing.
+      const [a, b] = focus.bounds;
+      const d = meters(a, b);
+      const W = box.current?.clientWidth ?? 1000, H = box.current?.clientHeight ?? 800;
+      const availW = Math.max(200, W - pad.left - pad.right), availH = Math.max(160, H - pad.top - pad.bottom);
+      const midLat = (a[0] + b[0]) / 2, midLon = (a[1] + b[1]) / 2;
+      const mpp = (d * 1.35) / Math.min(availW, availH);                       // metres per pixel wanted
+      const z = Math.log2((78271.52 * Math.cos((midLat * Math.PI) / 180)) / Math.max(mpp, 0.05)); // 512 px tiles
+      const zoom = Math.max(9, Math.min(15.5, isFinite(z) ? z : 13));
+      try {
+        map.flyTo({ center: [midLon, midLat], zoom, pitch: cinematicRef.current ? 30 : 0, bearing: focus.bearing ?? 0, padding: pad, duration: 1400, essential: true });
+      } catch { /* an invalid camera must never take the console down */ }
       return;
     }
-    map.flyTo({ center: [focus.lon, focus.lat], zoom: focus.zoom ?? Math.max(map.getZoom(), 15), pitch: cinematicRef.current ? 55 : 0, bearing: focus.bearing ?? map.getBearing(), padding: pad, duration: 1400, essential: true });
+    try {
+      map.flyTo({ center: [focus.lon, focus.lat], zoom: focus.zoom ?? Math.max(map.getZoom(), 15), pitch: cinematicRef.current ? 55 : 0, bearing: focus.bearing ?? map.getBearing(), padding: pad, duration: 1400, essential: true });
+    } catch { /* ignore */ }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ready > 0, focus?.key]);
 
