@@ -32,7 +32,11 @@ A GNSS receiver reports, every second:
 - **Galileo OSNMA status**: verified, failed or lost
 - optional inertial speed (from an IMU)
 
-At the moment these come from the simulator (`simulator.py`), which produces repeatable fake observations with or without attacks. A real receiver will plug in at the same point.
+These come from three sources, all producing the same observation dictionary:
+
+- the **simulator** (`simulator.py`): repeatable synthetic observations with or without attacks; every number in the results comes from it;
+- a **real receiver** on a serial port or a log (`receiver.py`): NMEA and u-blox UBX messages folded into one observation per second;
+- a **phone** (`phone.py` with the `/phone` page of the console): the phone's own fixes, position, speed, heading and accuracy, sent to the cloud once a second and pulled by the engine on a laptop. A phone gives no per-satellite C/N0, clock or OSNMA, so those inputs stay missing and the physics and route rules carry the score; the phone's real speed stands in for the odometer. The phone page can overlay a teleport, a slow drift or jamming on the real stream, in software only, so detection and the response layer can be shown on real data.
 
 ## Step 2: Turn the observation into features (`features.py`)
 

@@ -274,6 +274,42 @@ async def main():
         check("tour: remembered", await pg.locator(".tour").count() == 0)
         await ctx.close()
 
+        # ---- v10: the phone as a live receiver (/phone) ----
+        ctx = await b.new_context(viewport={"width": 390, "height": 844}, is_mobile=True, has_touch=True,
+                                  geolocation={"latitude": 47.4716, "longitude": -0.5531, "accuracy": 6}, permissions=["geolocation"])
+        pg = await ctx.new_page()
+        perrs = []
+        pg.on("pageerror", lambda e: perrs.append(f"pageerror: {e}"))
+        posts = []
+        async def ingest_stub(route):
+            if route.request.method == "OPTIONS":
+                await route.fulfill(status=204, headers={"Access-Control-Allow-Origin": "*", "Access-Control-Allow-Headers": "content-type, x-trustnav-token", "Access-Control-Allow-Methods": "POST, OPTIONS"}); return
+            posts.append({"headers": dict(route.request.headers), "body": json.loads(route.request.post_data or "{}")})
+            await route.fulfill(status=200, content_type="application/json", headers={"Access-Control-Allow-Origin": "*"}, body='{"ok":true}')
+        await pg.route("**/functions/v1/ingest", ingest_stub)
+        r = await pg.goto(BASE + "/phone", wait_until="domcontentloaded")
+        check("phone: page serves with geolocation allowed", r.status == 200 and "geolocation=(self)" in (r.headers.get("permissions-policy") or ""), r.headers.get("permissions-policy"))
+        await pg.wait_for_selector(".phone-main"); await pg.wait_for_load_state("networkidle"); await pg.wait_for_timeout(400)  # hydrated
+        await pg.click(".phone-main"); await pg.wait_for_timeout(300)
+        check("phone: refuses to start without a token", await pg.locator(".phone-error").count() == 1)
+        await pg.fill("input[placeholder='PHONE-01']", "phone-e2e")
+        await pg.fill("input[placeholder='paste the token']", "t" * 40)
+        await pg.click(".phone-main"); await pg.wait_for_timeout(2700)
+        check("phone: sends fixes with the token header", bool(posts) and posts[0]["headers"].get("x-trustnav-token") == "t" * 40)
+        first = posts[0]["body"] if posts else {}
+        check("phone: device id is normalised and fixes carry position and accuracy",
+              first.get("type") == "phone_obs" and first.get("device_id") == "PHONE-E2E" and first.get("obs") and abs(first["obs"][0]["lat"] - 47.4716) < 1e-6 and first["obs"][0]["acc"] == 6)
+        check("phone: real position overlay by default", all(o["overlay"] == "none" for q in posts for o in q["body"]["obs"]))
+        await pg.click("text=Teleport spoof"); n0 = len(posts); await pg.wait_for_timeout(2300)
+        check("phone: attack overlay travels with the fixes", len(posts) > n0 and all(o["overlay"] == "teleport" for o in posts[-1]["body"]["obs"]))
+        check("phone: status shows sending", "sending" in (await pg.locator(".phone-status").inner_text()).lower())
+        await pg.click("text=Stop"); await pg.wait_for_timeout(200)
+        check("phone: stops", "stopped" in (await pg.locator(".phone-status").inner_text()).lower())
+        check("phone: token and device remembered on this phone", await pg.evaluate("localStorage.getItem('trustnav-phone-device')") == "PHONE-E2E")
+        check("phone: no page errors", not perrs, "; ".join(perrs[:3]))
+        await axe(pg, "phone")
+        await ctx.close()
+
         # ---- performance budget ----
         resp = await (await b.new_page()).goto(BASE + "/")
         html = await resp.text()

@@ -8,6 +8,7 @@ The tutor's questions: *can it be improved more?* and *does it prevent attacks o
 
 | # | Step | Why | Effort |
 |---|---|---|---|
+| 0 | **Use a phone as the receiver** (done, v10). The `/phone` page sends the phone's fixes; `python -m trustnav_engine.phone` scores them live; the page can overlay a teleport, a drift or jamming on the real stream. | Real GNSS data through the whole chain today, for free; the overlay shows detection and the response on real data without transmitting anything. The phone has no per-satellite C/N0, clock or OSNMA, so the physics and route rules carry the demo. | done |
 | 1 | **Plug in a real receiver.** A u-blox USB receiver on the laptop, `python -m trustnav_engine.receiver --port ... --no-model`. The adapter already exists and is tested on synthetic NMEA/UBX. | First real data. Shows the whole chain live: antenna, engine, cloud, dashboard. | 1 hour once the device arrives |
 | 2 | **Record normal drives** with `--jsonl` (walk, tram, car around Angers). | The model's idea of "normal" comes from the simulator. The Stanford study (Kriezis et al., 2025) found thresholds tuned on one receiver failed on another. Real normal data is the only cure. | 2 to 3 hours of recording |
 | 3 | **Re-calibrate** the rules' thresholds and retrain the model on those recordings (`calibrate` script, to write). Report the before/after false alarm rate. | Turns the research prototype into something that is honest about a real device. | 1 day |

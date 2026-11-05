@@ -18,9 +18,13 @@ const mlAbout = (f: Frame, words: string[]) => {
   return words.some((w) => t.includes(w));
 };
 
-export function plainVerdict(f: Frame | null, kind: "vehicle" | "drone"): Plain | null {
+/** What kind of thing the words talk about; a phone running /phone is its own kind. */
+export type Thing = "vehicle" | "drone" | "phone";
+export const thingOf = (d: { id: string; kind: "vehicle" | "drone" }): Thing => d.kind === "drone" ? "drone" : /^PHONE/i.test(d.id) ? "phone" : "vehicle";
+
+export function plainVerdict(f: Frame | null, kind: Thing): Plain | null {
   if (!f) return null;
-  const thing = kind === "drone" ? "drone" : "van";
+  const thing = kind === "drone" ? "drone" : kind === "phone" ? "phone" : "van";
   const r = f.resp;
   const response = r && r.mode === "hold"
     ? ` TrustNav has stopped passing this position on${r.gap_m != null ? `: the receiver's claim is ${dist(r.gap_m)} from where the ${thing} really is` : ""}. It is tracking the ${thing} by its odometer${r.source === "route_odometer" ? " along its route" : ""} (${span(r.held_s)} so far).${r.action === "ISOLATE" ? ` Treat this ${thing} as compromised until it is verified.` : " Check it by phone or camera before acting on it."}`

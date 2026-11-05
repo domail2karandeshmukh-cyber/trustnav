@@ -7,8 +7,15 @@ const db = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SE
   auth: { persistSession: false },
 });
 
+// the /phone page calls this function from the browser, so answer CORS preflights
+const CORS = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Methods": "POST, OPTIONS",
+  "Access-Control-Allow-Headers": "content-type, x-trustnav-token",
+  "Access-Control-Max-Age": "86400",
+};
 const json = (status: number, body: unknown) =>
-  new Response(JSON.stringify(body), { status, headers: { "Content-Type": "application/json" } });
+  new Response(JSON.stringify(body), { status, headers: { "Content-Type": "application/json", ...CORS } });
 
 async function sha256(s: string) {
   const d = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(s));
@@ -18,6 +25,7 @@ async function sha256(s: string) {
 const num = (v: unknown) => (v === null || v === undefined || Number.isNaN(Number(v)) ? null : Number(v));
 
 Deno.serve(async (req) => {
+  if (req.method === "OPTIONS") return new Response(null, { status: 204, headers: CORS });
   if (req.method !== "POST") return json(405, { error: "POST only" });
   const token = req.headers.get("x-trustnav-token") ?? "";
   if (token.length < 24) return json(401, { error: "missing token" });
@@ -76,6 +84,34 @@ Deno.serve(async (req) => {
   if (p.type === "end_run") {
     await db.from("runs").update({ status: "finished", ended_at: new Date().toISOString() }).eq("id", p.run_id);
     return json(200, { ok: true });
+  }
+
+  // TrustNav Phone: the /phone page posts the phone's own fixes ...
+  if (p.type === "phone_obs") {
+    const device = String(p.device_id ?? "").slice(0, 32);
+    if (!/^[A-Z0-9-]{3,32}$/.test(device)) return json(400, { error: "device_id must be 3-32 chars A-Z 0-9 -" });
+    const overlays = new Set(["none", "teleport", "drift", "jam"]);
+    const iso = (t: unknown) => { const ms = Date.parse(String(t ?? "")); return Number.isNaN(ms) ? null : new Date(ms).toISOString(); };
+    const rows = (p.obs ?? []).slice(0, 50).map((o: any) => ({
+      device_id: device, t: iso(o.t), lat: num(o.lat), lon: num(o.lon), alt_m: num(o.alt), speed_mps: num(o.spd),
+      heading_deg: num(o.hdg), accuracy_m: num(o.acc), overlay: overlays.has(o.overlay) ? o.overlay : "none",
+    })).filter((r: any) => r.t !== null);
+    if (rows.length) {
+      const { error } = await db.from("phone_observations").insert(rows);
+      if (error) return json(500, { error: error.message });
+    }
+    return json(200, { ok: true, n: rows.length });
+  }
+
+  // ... and the engine on a laptop pulls them, newest after a cursor
+  if (p.type === "phone_pull") {
+    const device = String(p.device_id ?? "").slice(0, 32);
+    const since = Number(p.since ?? 0);
+    const { data, error } = await db.from("phone_observations")
+      .select("id,t,lat,lon,alt_m,speed_mps,heading_deg,accuracy_m,overlay")
+      .eq("device_id", device).gt("id", Number.isFinite(since) ? since : 0).order("id", { ascending: true }).limit(200);
+    if (error) return json(500, { error: error.message });
+    return json(200, { obs: data ?? [] });
   }
 
   return json(400, { error: "unknown type" });

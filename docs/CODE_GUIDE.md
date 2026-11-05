@@ -16,7 +16,7 @@ trustnav/
 │   ├── components/                the screens and widgets
 │   ├── lib/                       data hook, types, helpers
 │   ├── public/data/               recorded data the page can play without a database
-│   └── tests/e2e.py               98 end-to-end checks
+│   └── tests/e2e.py               109 end-to-end checks
 └── supabase/
     ├── migrations/                database schema and functions, in order
     ├── functions/ingest/          the secure write endpoint
@@ -41,6 +41,7 @@ trustnav/
 | `evaluate.py` | 250 | Train, pick fusion weights on validation routes, score held-out routes, compute precision, recall, F1, false-alarm rate, detection delay; `protection_report()` measures reported vs protected position error against ground truth |
 | `export.py` | 95 | Writes everything the dashboard needs to JSON |
 | `demo_feed.py` | 59 | Precomputes the 7-platform fleet with the real detector for the cloud demo |
+| `phone.py` | 170 | **Phone bridge.** Pulls the fixes the `/phone` page stored in the cloud (`phone_pull`), maps them to observations (signal inputs stay None, the phone's real speed stands in for the odometer), applies the attack overlay chosen on the phone (`Overlay`: teleport 8 km east, drift 0.7 m/s, jam = no fix), scores them with `Detector` and posts frames as a `receiver` run. `--route`, `--model`, `--from-start`, `--dry-run` |
 | `stream.py` | 103 | Live runner: one observation per second per device, posts to the ingest endpoint. `--dry-run`, `--speed` |
 
 ### The core function: `Detector.process`
@@ -76,6 +77,8 @@ action = CONTINUE if acceptable else ISOLATE if (critical or trust < 25) else VE
 
 `test_safeguard.py` (8): a trusted fix passes through; a spoofed fix is held and the estimate follows the odometer; a hold does not release while the fix is still far away (and does after a long clean streak, reporting the discrepancy); a clean fix that rejoins releases the hold; no fix still gives a position; action bands; route projection picks the right leg where the road doubles back; the route odometer tracks a jammed vehicle within 2 m over a minute.
 
+`test_phone.py` (5): a phone row becomes an observation with the signal inputs missing and the real speed as odometer; a no-fix row has no position; the teleport, drift and jam overlays move or remove the fix as specified; a steady walk is trusted and a teleport is caught in the same second (position-jump rule, ISOLATE, hold) with the protected estimate staying within 30 m of the real walk; a jam overlay still yields a dead-reckoned estimate.
+
 `test_receiver.py` (6): NMEA sentences parse; two epochs become two observations; a no-fix epoch has no position; UBX frames and the five messages parse (jamming indicator, clock, satellites, PVT); the live detector scores receiver observations; rules-only mode has no model risk.
 
 ## Supabase (`supabase/`)
@@ -87,8 +90,9 @@ action = CONTINUE if acceptable else ISOLATE if (critical or trust < 25) else VE
 | `migrations/..._demo_feed_fetch.sql` | `request_demo_feed` using `pg_net` to fetch the demo data |
 | `migrations/..._presenter_rate_limit.sql` | `presenter_failures` table and rate limit on the passcode |
 | `migrations/..._cron_log_cleanup.sql` | `trim_cron_logs` every 10 minutes |
+| `migrations/..._phone_observations.sql` | `phone_observations` table for the fixes the `/phone` page sends (row-level security on, no public policy: only the edge function reads and writes it); the daily prune also drops phone fixes older than 3 days |
 | `migrations/..._response_layer.sql` | Adds the `response` column to `frames` and copies it in `demo_tick` |
-| `functions/ingest/index.ts` | The only write path: POST only, token check by SHA-256 hash, `start_run` / `frames` / `end_run`, size limits (100 frames per call), input sanitising, upserts that ignore duplicates, `resp` stored as `response` |
+| `functions/ingest/index.ts` | The only write path: POST only, token check by SHA-256 hash, `start_run` / `frames` / `end_run`, size limits (100 frames per call), input sanitising, upserts that ignore duplicates, `resp` stored as `response`. Also `phone_obs` (the phone page stores fixes) and `phone_pull` (the laptop bridge reads them after a cursor), with CORS so the page can call it from the browser |
 | `load_demo_feed.sql` | Loads the precomputed demo into `demo_frames` |
 
 **Security model:** the browser can only read. All writes pass through the ingest function with a secret token that exists only in `engine/.env.local` (never committed; see `.gitignore`).

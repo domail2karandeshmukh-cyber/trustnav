@@ -3,7 +3,7 @@
 import { useMemo, useRef, useState } from "react";
 import type { Frame, Osnma, Reason, Status } from "@/lib/types";
 import { FEATURE_LABEL, OSNMA_INFO, STATUS_COLOR, STATUS_HEX, STATUS_WORD, dist, fmt, span } from "@/lib/format";
-import { gloss, plainVerdict } from "@/lib/plain";
+import { gloss, plainVerdict, type Thing } from "@/lib/plain";
 
 export function StatusWord({ st, strong }: { st: Status; strong?: boolean }) {
   return <span className={`stword${strong ? " strong" : ""}`} style={{ color: STATUS_COLOR[st] }}><i style={{ background: STATUS_COLOR[st] }} />{STATUS_WORD[st]}</span>;
@@ -275,7 +275,7 @@ export function ResponseLine({ frame, kind = "vehicle" }: { frame: Frame | null;
 }
 
 /** The verdict a non-expert needs first: what is happening to this platform, in one or two sentences. */
-export function PlainVerdict({ frame, kind }: { frame: Frame | null; kind: "vehicle" | "drone" }) {
+export function PlainVerdict({ frame, kind }: { frame: Frame | null; kind: Thing }) {
   const p = plainVerdict(frame, kind);
   if (!p) return null;
   return (

@@ -5,7 +5,7 @@ import MapView, { type CameraApi } from "./MapView";
 import type { ExplainApi } from "./Explainer";
 import SpaceTime from "./SpaceTime";
 import { ChartKey, Evidence, OsnmaLine, PlainVerdict, ResponseLine, Signals, StatusWord, TrustChart, TrustFigure, TrustTape } from "./Instruments";
-import { plainFleet, plainVerdict } from "@/lib/plain";
+import { plainFleet, plainVerdict, thingOf } from "@/lib/plain";
 import { useNarrate, useVoicePref } from "@/lib/useVoice";
 import { DroneGlyph, IconBack, IconBell, IconChevron, IconClose, IconKey, IconMute, IconPlay, IconReport, IconTarget, IconTimeline, IconVoice, VehicleGlyph } from "./Icons";
 import Report from "./Report";
@@ -196,7 +196,7 @@ export default function LiveView({ routes, theme, onHandle, visible, onGuide }: 
   }, [active, fleet.frames]);
   const held = shields.length;
   const worstLie = Math.max(0, ...active.map((d) => latest[d.id].resp?.gap_m ?? 0).filter((g) => g != null));
-  const spoken = present && selDev && sel ? (() => { const v = plainVerdict(sel, selDev.kind); return `${selDev.name}, ${STATUS_WORD[sel.st].toLowerCase()}, trust ${Math.round(sel.trust)}. ${v ? `${v.title}. ${v.body}` : ""}`; })() : null;
+  const spoken = present && selDev && sel ? (() => { const v = plainVerdict(sel, thingOf(selDev)); return `${selDev.name}, ${STATUS_WORD[sel.st].toLowerCase()}, trust ${Math.round(sel.trust)}. ${v ? `${v.title}. ${v.body}` : ""}`; })() : null;
   useNarrate(spoken, "en-GB", present && voice && !explaining);
   const lie = sel?.resp && sel.resp.mode === "hold" && sel.resp.lat != null && sel.lat != null && (sel.resp.gap_m ?? 0) > 250
     ? [[sel.lat, sel.lon!], [sel.resp.lat, sel.resp.lon!]] as [number, number][] : undefined;
@@ -384,7 +384,7 @@ function DeviceDetail({ device, frames, incidents, routeName, onBack, follow, on
         <button className="iconbtn" onClick={onBack} aria-label="Back to fleet"><IconBack /></button>
         <div style={{ flex: 1, minWidth: 0 }}>
           <h1>{device.name}</h1>
-          <p>{device.id}, {device.kind === "drone" ? "survey drone" : "road vehicle"}{routeName ? ` on ${routeName}` : ""}</p>
+          <p>{device.id}, {thingOf(device) === "drone" ? "survey drone" : thingOf(device) === "phone" ? "phone receiver" : "road vehicle"}{routeName ? ` on ${routeName}` : ""}</p>
         </div>
         <div className="detail-actions">
           <button className={`iconbtn${follow ? " on" : ""}`} onClick={onFollow} aria-pressed={follow} aria-label="Follow on the map" title={follow ? "Stop following" : "Follow on the map (F)"}><IconTarget size={17} /></button>
@@ -392,7 +392,7 @@ function DeviceDetail({ device, frames, incidents, routeName, onBack, follow, on
         </div>
       </header>
       <TrustFigure frame={f} since={sinceText(frames)} />
-      <PlainVerdict frame={f} kind={device.kind} />
+      <PlainVerdict frame={f} kind={thingOf(device)} />
       <section className="panel-sec">
         <div className="sec-head"><h2>Last five minutes</h2>{f?.t && <span className="num">{clock(f.t)}</span>}</div>
         <TrustTape frames={frames} slots={KEEP} first={first} height={12} brackets={brackets} />

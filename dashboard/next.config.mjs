@@ -14,6 +14,11 @@ const nextConfig = {
         ],
       },
       {
+        // the phone page needs the browser's location; nothing else on the site does
+        source: "/phone",
+        headers: [{ key: "Permissions-Policy", value: "camera=(), microphone=(), geolocation=(self)" }],
+      },
+      {
         source: "/data/(.*)",
         headers: [{ key: "Cache-Control", value: "public, max-age=300, stale-while-revalidate=86400" }],
       },
