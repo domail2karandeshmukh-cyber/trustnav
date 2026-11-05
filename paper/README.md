@@ -1,31 +1,45 @@
 # TrustNav: IEEE conference paper
 
-`trustnav.tex` is the project report written as an IEEE conference paper
-(two-column IEEEtran format, six pages). `trustnav.pdf` is the compiled copy.
+The project report written as a six-page IEEE conference paper (two-column
+IEEEtran format), in two languages:
+
+| File | Language | Compiled copy |
+|---|---|---|
+| `trustnav.tex` | English (the reference version) | `trustnav.pdf` |
+| `trustnav_fr.tex` | French | `trustnav_fr.pdf` |
+
+Both are 6 pages. The French version carries the same text, tables and
+numbers; it omits one figure (the map view) to stay within six pages.
 
 ## Build
 
 ```bash
 cd paper
-pdflatex trustnav.tex
-pdflatex trustnav.tex      # second pass resolves references and figure numbers
+pdflatex trustnav.tex && pdflatex trustnav.tex        # English
+pdflatex trustnav_fr.tex && pdflatex trustnav_fr.tex  # French (needs babel-french)
 ```
 
 `IEEEtran.cls` (the official IEEE class, version 1.8b) is shipped in this folder
 so the paper builds on any TeX installation, including Overleaf: upload the whole
 `paper/` folder as a project and compile `trustnav.tex` with pdfLaTeX.
 
-## Contents
+## Figures
+
+Every plot is a vector PDF drawn from the evaluation data the engine exports
+(`dashboard/public/data/replay.json`), so the figures agree with the tables by
+construction. Regenerate them with:
+
+```bash
+python3 paper/figures/make_figures.py
+```
 
 | File | What it is |
 |---|---|
-| `trustnav.tex` | the paper (abstract, introduction, related work, system design, implementation, evaluation, discussion, ethics, conclusion, references) |
-| `trustnav.pdf` | compiled paper |
-| `IEEEtran.cls` | IEEE conference class file |
-| `figures/console-photo.jpg` | the deployed console under a forgery attack (Fig. 2) |
-| `figures/map-protection.png` | the response layer on the map (Fig. 3) |
-| `figures/panel-verdict.png` | the plain-language verdict panel (spare figure) |
+| `figures/fig_timeline_{en,fr}.pdf` | trust and position error, second by second, for four held-out scenarios (Fig. 3) |
+| `figures/fig_map_{en,fr}.pdf` | the response layer seen from above for the forgery and drone scenarios (Fig. 4, English version) |
+| `figures/fig_roc_{en,fr}.pdf` | ROC and precision–recall curves of the three detectors (not placed in the paper for space; the AUCs are in Table II) |
+| `figures/console-replay.png` | the console replaying the forgery scenario, captured at 2x from the deployed build (Fig. 2) |
+| `figures/make_figures.py` | the script that draws the plots |
 
-Every number in the paper comes from `dashboard/public/data/meta.json`, which the
-engine writes when the held-out catalogue is evaluated; the longer technical
-documentation is in `docs/`.
+Every number in the paper comes from `dashboard/public/data/meta.json`; the
+longer technical documentation is in `docs/`.

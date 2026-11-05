@@ -14,3 +14,4 @@ fig1.png
 figs23.png
 prev-*.png
 t.*
+__pycache__/

@@ -20,7 +20,7 @@
 
 **Start here:** [docs/TrustNav_Project_Brief.pdf](docs/TrustNav_Project_Brief.pdf) (6 pages: what, how to read the console, results, what comes next, the team). The complete reference is [docs/TrustNav_Technical_Documentation.pdf](docs/TrustNav_Technical_Documentation.pdf) (30 pages, everything below in one file). Both are built from this folder with `python3 docs/build_pdf.py`.
 
-**Paper:** [paper/trustnav.pdf](paper/trustnav.pdf) is the project written up as a six-page IEEE conference paper (IEEEtran, LaTeX source in [paper/](paper/)): abstract, related work with sources, system design with the formulas, evaluation tables, limitations, ethics and references.
+**Paper:** [paper/trustnav.pdf](paper/trustnav.pdf) is the project written up as a six-page IEEE conference paper (IEEEtran, LaTeX source in [paper/](paper/)): abstract, related work with sources, a comparison table, system design with the formulas, vector figures drawn from the evaluation data, the results tables, limitations, ethics and references. A French version is at [paper/trustnav_fr.pdf](paper/trustnav_fr.pdf).
 
 | Document | What it explains |
 |---|---|
