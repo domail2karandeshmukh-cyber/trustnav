@@ -5,9 +5,10 @@ import MapView, { type CameraApi } from "./MapView";
 import SpaceTime from "./SpaceTime";
 import { storyFor, type Beat } from "@/lib/story";
 import { ChartKey, Evidence, OsnmaLine, PlainVerdict, ResponseLine, Signals, TrustChart, TrustFigure, TrustTape, type Bracket } from "./Instruments";
-import { DroneGlyph, IconBack, IconClose, IconPause, IconPlay, IconStory, VehicleGlyph } from "./Icons";
+import { DroneGlyph, IconBack, IconClose, IconMute, IconPause, IconPlay, IconStory, IconVoice, VehicleGlyph } from "./Icons";
 import type { Frame, ReplayData, Scenario } from "@/lib/types";
 import { ATTACK_WORD, STATUS_COLOR, dist, mmss, span } from "@/lib/format";
+import { useNarrate, useVoicePref } from "@/lib/useVoice";
 import { useWide } from "@/lib/useWide";
 import type { Theme } from "@/lib/useTheme";
 
@@ -97,6 +98,9 @@ export default function ReplayView({ data, initial, theme, onHandle, onScenario,
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [i, story, beats]);
   const beat = story ? beats[story.beat] : null;
+  // the story is read aloud (English: its sentences are built from the data), unless muted
+  const [voice, setVoice] = useVoicePref();
+  useNarrate(beat ? `${beat.title}. ${beat.body}` : null, "en-GB", !!story && voice);
   const shown = useMemo(() => sc.frames.slice(0, i + 1), [sc, i]);
   const truth = useMemo(() => (showTruth && win ? shown.filter((f) => f.s >= win[0] && f.tl).map((f) => f.tl as [number, number]) : undefined), [shown, showTruth, win]);
   const ghost = useMemo(() => {
@@ -235,6 +239,7 @@ export default function ReplayView({ data, initial, theme, onHandle, onScenario,
               ) : (
                 <button className="btn sm" onClick={() => { if (holdTimer.current) clearTimeout(holdTimer.current); const n = story.beat + 1; if (n >= beats.length) return; setI(beats[n].at); setStory({ beat: n, holding: true, done: n + 1 >= beats.length }); aim(beats[n], sc.frames[beats[n].at]); if (n + 1 < beats.length) holdTimer.current = setTimeout(() => { setStory((st) => (st ? { ...st, holding: false } : st)); setPlaying(true); }, beats[n].hold ?? 3000); }}>Next</button>
               )}
+              <button className={`iconbtn voice-btn${voice ? " on" : ""}`} onClick={() => setVoice(!voice)} aria-pressed={voice} aria-label={voice ? "Voice on" : "Voice off"} title={voice ? "Voice on: click to mute" : "Voice off: click to read the story aloud"}>{voice ? <IconVoice size={15} /> : <IconMute size={15} />}</button>
               <button className="iconbtn" onClick={stopStory} aria-label="Leave the story"><IconClose size={15} /></button>
             </div>
           </div>

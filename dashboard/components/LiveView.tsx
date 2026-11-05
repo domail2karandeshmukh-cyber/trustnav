@@ -5,8 +5,9 @@ import MapView, { type CameraApi } from "./MapView";
 import type { ExplainApi } from "./Explainer";
 import SpaceTime from "./SpaceTime";
 import { ChartKey, Evidence, OsnmaLine, PlainVerdict, ResponseLine, Signals, StatusWord, TrustChart, TrustFigure, TrustTape } from "./Instruments";
-import { plainFleet } from "@/lib/plain";
-import { DroneGlyph, IconBack, IconBell, IconChevron, IconClose, IconKey, IconPlay, IconReport, IconTarget, IconTimeline, VehicleGlyph } from "./Icons";
+import { plainFleet, plainVerdict } from "@/lib/plain";
+import { useNarrate, useVoicePref } from "@/lib/useVoice";
+import { DroneGlyph, IconBack, IconBell, IconChevron, IconClose, IconKey, IconMute, IconPlay, IconReport, IconTarget, IconTimeline, IconVoice, VehicleGlyph } from "./Icons";
 import Report from "./Report";
 import { useToasts } from "./Toasts";
 import { KEEP, useFleet, type Fleet } from "@/lib/useFleet";
@@ -45,6 +46,7 @@ export default function LiveView({ routes, theme, onHandle, visible, onGuide }: 
   const [presentBearing, setPresentBearing] = useState(0);
   const [acked, setAcked] = useState<Set<string>>(() => new Set());
   const [explaining, setExplaining] = useState(false);
+  const [voice, setVoice] = useVoicePref();
   const snap = useRef<(() => string | null) | null>(null);
   const seenInc = useRef<Set<string>>(new Set());
   const seenReady = useRef(false);
@@ -194,6 +196,8 @@ export default function LiveView({ routes, theme, onHandle, visible, onGuide }: 
   }, [active, fleet.frames]);
   const held = shields.length;
   const worstLie = Math.max(0, ...active.map((d) => latest[d.id].resp?.gap_m ?? 0).filter((g) => g != null));
+  const spoken = present && selDev && sel ? (() => { const v = plainVerdict(sel, selDev.kind); return `${selDev.name}, ${STATUS_WORD[sel.st].toLowerCase()}, trust ${Math.round(sel.trust)}. ${v ? `${v.title}. ${v.body}` : ""}`; })() : null;
+  useNarrate(spoken, "en-GB", present && voice && !explaining);
   const lie = sel?.resp && sel.resp.mode === "hold" && sel.resp.lat != null && sel.lat != null && (sel.resp.gap_m ?? 0) > 250
     ? [[sel.lat, sel.lon!], [sel.resp.lat, sel.resp.lon!]] as [number, number][] : undefined;
   const focus = sel?.lat != null && selected ? { lat: sel.lat, lon: sel.lon!, key: present ? `${selected}:${presentBearing}` : selected, bearing: present ? presentBearing : undefined, zoom: present ? 15.4 : undefined, bounds: lie } : null;
@@ -282,7 +286,9 @@ export default function LiveView({ routes, theme, onHandle, visible, onGuide }: 
             <h3>{selDev.name} <span style={{ color: STATUS_COLOR[sel.st] }}>{STATUS_WORD[sel.st].toLowerCase()}, trust {Math.round(sel.trust)}</span></h3>
             <p>{sel.why[0] ? `${sel.why[0].title}: ${sel.why[0].detail.split(". ")[0].replace(/\.$/, "")}.` : "Every check passes: position, motion, signal and Galileo authentication agree."}
               {sel.resp && sel.resp.mode === "hold" ? ` Response: ${sel.resp.action === "ISOLATE" ? "isolated" : "held for verification"}; the position in use is estimated from the odometer${sel.resp.gap_m != null ? `, a ${dist(sel.resp.gap_m)} lie refused` : ""}.` : ""}</p>
-            <div className="caption-actions"><span className="caption-hint">Esc stops. Any click stops.</span><button className="btn sm" onClick={() => setPresent(false)}>Stop</button></div>
+            <div className="caption-actions"><span className="caption-hint">Esc stops. Any click stops.</span>
+              <button className={`iconbtn voice-btn${voice ? " on" : ""}`} onClick={() => setVoice(!voice)} aria-pressed={voice} aria-label={voice ? "Voice on" : "Voice off"} title={voice ? "Voice on: click to mute" : "Voice off: click to read aloud"}>{voice ? <IconVoice size={15} /> : <IconMute size={15} />}</button>
+              <button className="btn sm" onClick={() => setPresent(false)}>Stop</button></div>
           </div>
         )}
         {wide && (

@@ -2,16 +2,20 @@
 
 import { useEffect, useState } from "react";
 import { IconPlay } from "./Icons";
+import { HERO, HERO_LANGS, HERO_NAMES, heroLang, type HeroLang } from "@/lib/i18n-hero";
 
 const KEY = "trustnav-intro-seen";
 
-/** Full-screen opening over the live map: one sentence, two doors. Shown once per browser session. */
+/** Full-screen opening over the live map: one sentence, three doors, ten languages. Shown once per browser session. */
 export default function Hero({ onStory, onConsole, onExplain }: { onStory: () => void; onConsole: () => void; onExplain?: () => void }) {
   const [show, setShow] = useState(false);
+  const [lang, setLangState] = useState<HeroLang>("en");
   useEffect(() => {
+    setLangState(heroLang());
     try { if (!sessionStorage.getItem(KEY)) setShow(true); else onConsole(); } catch { setShow(true); }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+  const setLang = (l: HeroLang) => { setLangState(l); try { localStorage.setItem("trustnav-lang", l); } catch { /* storage blocked */ } };
   const close = () => { setShow(false); try { sessionStorage.setItem(KEY, "1"); } catch { /* storage blocked */ } };
   useEffect(() => {
     if (!show) return;
@@ -21,24 +25,30 @@ export default function Hero({ onStory, onConsole, onExplain }: { onStory: () =>
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [show]);
   if (!show) return null;
+  const t = HERO[lang];
   return (
-    <div className="hero" role="dialog" aria-label="Welcome">
+    <div className="hero" role="dialog" aria-label="Welcome" lang={lang}>
       <div className="hero-in">
-        <div className="hero-kicker">TrustNav</div>
-        <h1>Can this position<br />be trusted?</h1>
-        <p>Every second, for every vehicle and drone, TrustNav scores how much its satellite position can be believed, catches spoofing and jamming, and says why in plain words.</p>
+        <div className="hero-top">
+          <div className="hero-kicker">TrustNav</div>
+          <label className="hero-lang">
+            <span>{t.language}</span>
+            <select value={lang} onChange={(e) => setLang(e.target.value as HeroLang)} aria-label={t.language}>
+              {HERO_LANGS.map((l) => <option key={l} value={l}>{HERO_NAMES[l]}</option>)}
+            </select>
+          </label>
+        </div>
+        <h1>{t.title}</h1>
+        <p>{t.lede}</p>
         <div className="hero-actions">
-          <button className="btn hero-btn primary" onClick={() => { close(); onStory(); }}><IconPlay size={18} /> Watch an attack, 60 seconds</button>
-          {onExplain && <button className="btn hero-btn" onClick={() => { close(); onConsole(); onExplain(); }}>Explain it to me, with voice (10 languages)</button>}
-          <button className="btn hero-btn" onClick={() => { close(); onConsole(); }}>Open the live console</button>
+          <button className="btn hero-btn primary" onClick={() => { close(); onStory(); }}><IconPlay size={18} /> {t.story}</button>
+          {onExplain && <button className="btn hero-btn" onClick={() => { close(); onConsole(); onExplain(); }}>{t.explain}</button>}
+          <button className="btn hero-btn" onClick={() => { close(); onConsole(); }}>{t.console}</button>
         </div>
         <div className="hero-facts">
-          <span><b>7 of 7</b> attacks caught</span>
-          <span><b>0.44%</b> false alarms</span>
-          <span><b>8 km lie</b> cut to 4 m</span>
-          <span><b>Galileo</b> signatures checked</span>
+          {t.facts.map(([b, s]) => <span key={b}><b>{b}</b> {s}</span>)}
         </div>
-        <p className="hero-foot">Research prototype, ESAIP Angers. Attacks are simulated in software.</p>
+        <p className="hero-foot">{t.foot}</p>
       </div>
     </div>
   );

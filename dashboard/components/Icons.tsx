@@ -60,6 +60,12 @@ export const IconTimeline = ({ size, ...p }: P) => (
 export const IconHelp = ({ size, ...p }: P) => (
   <svg {...base(size)} {...p}><circle cx="12" cy="12" r="9" /><path d="M9.5 9.5a2.5 2.5 0 1 1 3.5 2.3c-.7.3-1 .8-1 1.5v.4" /><path d="M12 17v.2" /></svg>
 );
+export const IconVoice = ({ size, ...p }: P) => (
+  <svg {...base(size)} {...p}><path d="M4 9.5v5h3.5L12 18.5v-13L7.5 9.5z" /><path d="M15.5 9a4 4 0 0 1 0 6M18 6.5a7.5 7.5 0 0 1 0 11" /></svg>
+);
+export const IconMute = ({ size, ...p }: P) => (
+  <svg {...base(size)} {...p}><path d="M4 9.5v5h3.5L12 18.5v-13L7.5 9.5z" /><path d="m15.5 9.5 5 5M20.5 9.5l-5 5" /></svg>
+);
 export const IconBell = ({ size, ...p }: P) => (
   <svg {...base(size)} {...p}><path d="M6 16V11a6 6 0 0 1 12 0v5l1.5 2h-15z" /><path d="M10 20.5a2.2 2.2 0 0 0 4 0" /></svg>
 );

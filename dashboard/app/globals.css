@@ -686,3 +686,10 @@ kbd { padding: 1px 5px; border: 1px solid var(--line); border-bottom-width: 2px;
 .caption .btn:disabled { opacity: .35; }
 .hero-actions .hero-btn { white-space: normal; }
 @media (max-width: 899px) { .caption.explainer { bottom: 8px; } .spot, .spot-dim { display: none; } }
+
+/* ---------- v9: opening screen languages, voice toggles ---------- */
+.hero-top { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.hero-lang { display: inline-flex; align-items: center; gap: 8px; font-size: 13px; color: var(--ink-2); }
+.hero-lang select { padding: 6px 10px; border-radius: 9px; border: 1px solid var(--line); background: var(--surface); color: var(--ink); font: inherit; font-size: 14px; }
+.caption .voice-btn { background: transparent; color: inherit; border-color: color-mix(in srgb, var(--on-ink) 30%, transparent); margin-left: 0; }
+.caption .voice-btn.on { border-color: var(--chart); color: var(--chart); }

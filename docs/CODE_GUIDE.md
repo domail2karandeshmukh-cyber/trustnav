@@ -16,7 +16,7 @@ trustnav/
 │   ├── components/                the screens and widgets
 │   ├── lib/                       data hook, types, helpers
 │   ├── public/data/               recorded data the page can play without a database
-│   └── tests/e2e.py               93 end-to-end checks
+│   └── tests/e2e.py               98 end-to-end checks
 └── supabase/
     ├── migrations/                database schema and functions, in order
     ├── functions/ingest/          the secure write endpoint
@@ -106,6 +106,8 @@ Stack: Next.js 15, React 19, TypeScript, MapLibre GL, supabase-js, self-hosted B
 | `supabase.ts` | Read-only client using the public key |
 | `story.ts` | The narrated story beats and camera moves |
 | `i18n-explainer.ts` | The narrated explainer's nine scenes in ten languages, with the UI strings and placeholders |
+| `i18n-hero.ts` | The opening screen in ten languages (small, ships in the first load) |
+| `useVoice.ts` | `useVoicePref` (voice on/off, remembered) and `useNarrate` (reads a caption aloud when it changes) for the story and presentation captions |
 | `speech.ts` | Browser speech synthesis: voice choice per language (natural voices first, Hindi as the fallback for Marathi), speak with a watchdog, stop |
 | `plain.ts` | The plain-language layer: `plainVerdict` (one or two sentences per platform from the evidence codes and the response), `plainFleet` (the fleet headline) and `gloss` (engineering terms to everyday wording) |
 | `format.ts` | Number, time and status formatting |
@@ -129,7 +131,7 @@ Stack: Next.js 15, React 19, TypeScript, MapLibre GL, supabase-js, self-hosted B
 
 ### Tests (`dashboard/tests/e2e.py`)
 
-93 Playwright checks: every view, interactions, keyboard shortcuts, command palette, report, story mode, space-time, the response layer in the replay panel, map and results, the comparison table, the live KPI strip, trust-ring markers, live shields and lie labels, alert sparklines, actions and acknowledgements, the playbook, presentation mode, phone layout, accessibility (axe), and a JavaScript size budget.
+98 Playwright checks: every view, interactions, keyboard shortcuts, command palette, report, story mode, space-time, the response layer in the replay panel, map and results, the comparison table, the live KPI strip, trust-ring markers, live shields and lie labels, alert sparklines, actions and acknowledgements, the playbook, presentation mode, phone layout, accessibility (axe), and a JavaScript size budget.
 
 ## Deployment
 
