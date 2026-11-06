@@ -58,5 +58,8 @@ colour-blind readers and in greyscale; fonts are embedded (Liberation Serif).
 - Numbers: every numeric token in the French file is compared with the English
   one (decimal commas converted), and the English numbers are compared with
   `figures/analysis.json` and `dashboard/public/data/meta.json`.
+- References: bibliography entries are in order of first citation (IEEE style)
+  and every entry is cited; every URL was opened and the title, date and the
+  facts attributed to it were checked against the page.
 - Page count: `pdfinfo trustnav.pdf | grep Pages` must say 6, and the log must
   contain no `Overfull` or `Underfull` lines.
