@@ -51,10 +51,21 @@ def test_hold_does_not_release_while_the_fix_is_still_far_away():
     # the spoofer now looks clean (trust 90) but keeps the vehicle 3 km away
     modes = [sg.update(frame(i, *far, 90), {"imu_speed_mps": 0.0})["mode"] for i in range(2, 8)]
     assert all(m == "hold" for m in modes)
-    # ... until the long clean streak forces a release, with the discrepancy reported
-    rs = [sg.update(frame(i, *far, 90), {"imu_speed_mps": 0.0}) for i in range(8, 14)]
+    # ... and a long clean streak does not release it either: 3 km is not odometer drift
+    rs = [sg.update(frame(i, *far, 90), {"imu_speed_mps": 0.0}) for i in range(8, 30)]
+    assert all(r["mode"] == "hold" and r["action"] == "CONTINUE" for r in rs) and rs[-1]["gap_m"] > 2900
+
+
+def test_long_clean_streak_releases_a_fix_that_is_merely_drifted():
+    sg = Safeguard(settings=SafeguardSettings(release_after_clean=3, release_after_long_clean=10))
+    sg.update(frame(0, LAT, LON, 95), {"imu_speed_mps": 0.0})
+    sg.update(frame(1, *offset(LAT, LON, 500.0, 0.0), 20), {"imu_speed_mps": 0.0})
+    # the returning fix is 300 m from the estimate: outside the normal tolerance (60 m), inside the long one (600 m)
+    near = offset(LAT, LON, 300.0, 0.0)
+    rs = [sg.update(frame(i, *near, 90), {"imu_speed_mps": 0.0}) for i in range(2, 14)]
+    assert [r["mode"] for r in rs[:9]] == ["hold"] * 9
     rel = next(r for r in rs if r["mode"] == "accept")
-    assert rel["gap_m"] > 2900 and rel["rejoined_after_s"] == 11.0
+    assert 290 < rel["gap_m"] < 310 and rel["rejoined_after_s"] == 11.0
 
 
 def test_hold_releases_when_a_clean_fix_rejoins_the_estimate():

@@ -24,8 +24,13 @@ Per observation:
            provided the returning fix lies within a tolerance of the estimate
            (a base distance plus a fraction of the distance travelled while
            held), so a spoofer cannot end the hold by looking clean while
-           still far away. A long clean streak releases regardless, with the
-           discrepancy reported, because an odometer estimate drifts too.
+           still far away. A long clean streak releases with a tolerance
+           `rejoin_long_factor` times looser, with the discrepancy reported,
+           because an odometer estimate drifts too; a fix that is still
+           kilometres away stays refused, since no odometer drifts that far,
+           and the operator is asked to verify. (Found on a real recording:
+           without this bound a teleported fix that keeps moving consistently
+           was taken back after sixty seconds.)
 
 Recommended action, for the operator and for the fleet software:
 
@@ -75,7 +80,8 @@ class Safeguard:
                 self.clean += 1
                 gap = haversine_m(frame["lat"], frame["lon"], *self.est)
                 tol = self.s.rejoin_base_m + self.s.rejoin_frac * self.travelled_m
-                if (self.clean >= self.s.release_after_clean and gap <= tol) or self.clean >= self.s.release_after_long_clean:
+                long_ok = self.clean >= self.s.release_after_long_clean and gap <= self.s.rejoin_long_factor * tol
+                if (self.clean >= self.s.release_after_clean and gap <= tol) or long_ok:
                     held = self.held_s
                     self._accept(frame)
                     return self._resp("accept", frame["lat"], frame["lon"], 0.0, action, gap, "gnss", rejoined_after_s=held)

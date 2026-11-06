@@ -92,7 +92,8 @@ class SafeguardSettings:
     hold_below_trust: float = 50.0        # same line as the incident tracker and the dashboard alert line
     isolate_below_trust: float = 25.0     # UNTRUSTED band: stop acting on this device's position at all
     release_after_clean: int = 5          # consecutive acceptable fixes before a hold can end
-    release_after_long_clean: int = 60    # ... or this many, regardless of the rejoin check
+    release_after_long_clean: int = 60    # ... or this many, with the rejoin tolerance loosened ...
+    rejoin_long_factor: float = 10.0      # ... by this factor (an odometer estimate drifts, a spoofer teleports)
     rejoin_base_m: float = 60.0           # returning fix must lie this close to the estimate ...
     rejoin_frac: float = 0.03             # ... plus 3 % of the distance dead-reckoned while held
 

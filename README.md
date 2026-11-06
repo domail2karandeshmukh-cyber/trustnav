@@ -69,6 +69,8 @@ Ten held-out scenarios: two normal drives, teleport spoof, gradual drift, signal
 
 These numbers are an upper bound: one simulator produces every split. See *Limitations* in the dashboard's Method tab.
 
+**Real receiver check** (`python -m trustnav_engine.realcheck`): a public 27.6-minute recording of a u-blox ZED-F9K driving a loop in Mountain View (Google gps-measurement-tools, Apache-2.0), with a NovAtel SPAN reference track, replayed through the same adapter and detector. Rules alone: no false alarm in the whole drive (minimum trust 90). C/N0 + satellite-count baseline: 86 false-alarm seconds. Model trained on the simulator: alerts on 89 % of the seconds, so it must be re-calibrated on the receiver in use; re-calibrated on the first 19 minutes of the drive it raises no alert in the remaining 8.5 minutes, and software attacks overlaid on that segment (8 km teleport, 0.7 m/s drift, jamming) are caught after 0, 35 and 1 s with the protected estimate within 0.8, 24 and 0.8 m of the reference (the reference track is the route and its speed the odometer, so these are idealised). Two findings went back into the design: the tail detector now scores in log space so extreme values stay ordered, and a long clean streak no longer releases a hold while the fix is still kilometres from the estimate.
+
 ## Repository layout
 
 | Path | What |
@@ -82,11 +84,12 @@ These numbers are an upper bound: one simulator produces every split. See *Limit
 ```bash
 cd engine
 python -m pip install -r requirements.txt
-python -m pytest -q                      # 28 tests
+python -m pytest -q                      # 32 tests
 python -m trustnav_engine.evaluate       # train, choose fusion weights, print held-out metrics
 python -m trustnav_engine.export         # write out/*.json for the dashboard
 python -m trustnav_engine.stream --dry-run --speed 10   # live engine without sending
 python -m trustnav_engine.receiver --port /dev/ttyACM0 --no-model --dry-run   # a real u-blox receiver (NMEA/UBX over USB)
+python -m trustnav_engine.realcheck      # replay the public real-receiver recording, re-calibrate, overlay attacks
 ```
 
 To stream live to the dashboard, put the ingest URL and token in `engine/.env.local` (never committed) and run:

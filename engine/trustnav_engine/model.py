@@ -60,21 +60,31 @@ class TailModel:
         self.upper = np.array([k in UPPER_TAIL for k in MODEL_FEATURES])
 
     def neg_log_p(self, X):
-        """-log10 tail probability, per row and feature."""
+        """-log10 tail probability, per row and feature.
+
+        Computed in log space so that the exponential tail never underflows:
+        a fix 8 km off the route scores higher than one 2 km off even when
+        both are far beyond anything in the training data. (A probability
+        clipped at a floor would make every extreme value look alike, and the
+        calibration could then not tell them apart either.)"""
         n = self.n
         out = np.zeros_like(X)
+        ln10 = math.log(10.0)
         for j in range(X.shape[1]):
             col = self.sorted[:, j]
             x = X[:, j]
-            above = (n - np.searchsorted(col, x, side="left") + 1) / (n + 1)
-            below = (np.searchsorted(col, x, side="right") + 1) / (n + 1)
-            # exponential extrapolation past the 99th / 1st percentile
-            hi_ext = 0.01 * np.exp(-np.maximum(x - self.q[3, j], 0.0) / self.scale_hi[j])
-            lo_ext = 0.01 * np.exp(-np.maximum(self.q[0, j] - x, 0.0) / self.scale_lo[j])
-            above = np.where(x > self.q[3, j], np.minimum(above, hi_ext), above)
-            below = np.where(x < self.q[0, j], np.minimum(below, lo_ext), below)
-            p = above if self.upper[j] else np.minimum(1.0, 2.0 * np.minimum(above, below))
-            out[:, j] = -np.log10(np.clip(p, 1e-15, 1.0))
+            nl_above = -np.log10((n - np.searchsorted(col, x, side="left") + 1) / (n + 1))
+            nl_below = -np.log10((np.searchsorted(col, x, side="right") + 1) / (n + 1))
+            # exponential extrapolation past the 99th / 1st percentile: p = 0.01 * exp(-excess / scale)
+            hi_ext = 2.0 + np.maximum(x - self.q[3, j], 0.0) / self.scale_hi[j] / ln10
+            lo_ext = 2.0 + np.maximum(self.q[0, j] - x, 0.0) / self.scale_lo[j] / ln10
+            nl_above = np.where(x > self.q[3, j], np.maximum(nl_above, hi_ext), nl_above)
+            nl_below = np.where(x < self.q[0, j], np.maximum(nl_below, lo_ext), nl_below)
+            if self.upper[j]:
+                out[:, j] = nl_above
+            else:
+                # two-sided: p = min(1, 2 * min(above, below))
+                out[:, j] = np.maximum(0.0, np.maximum(nl_above, nl_below) - math.log10(2.0))
         return out
 
 

@@ -1,0 +1,179 @@
+{
+  "source": "MTV.Local1.ublox-F9K.20200206-181434.nmea",
+  "reference": "MTV.Local1.SPAN.20200206-181434.gga",
+  "epochs": 1653,
+  "duration_min": 27.6,
+  "start": "2020-02-07T02:14:17Z",
+  "end": "2020-02-07T02:43:04Z",
+  "moving_seconds": 1000,
+  "max_speed_mps": 17.3,
+  "cn0_mean_dbhz": 38.5,
+  "pdop_max": 48.18,
+  "no_fix_seconds": 0,
+  "inputs_missing": [
+    "pseudorange residuals",
+    "clock",
+    "jamming indicator",
+    "OSNMA"
+  ],
+  "route": {
+    "points": 1017,
+    "length_m": 8730,
+    "is_loop": true
+  },
+  "odometer": "speed over ground from the reference track",
+  "raw_fix_error_vs_reference_m": {
+    "median": 0.49,
+    "p95": 0.83,
+    "max": 1.08
+  },
+  "whole_drive_rules_only": {
+    "alert_seconds": 0,
+    "episodes": 0,
+    "longest_episode_s": 0,
+    "alert_seconds_per_hour": 0.0,
+    "episodes_per_hour": 0.0,
+    "min_trust": 90.0,
+    "mean_trust": 99.9,
+    "evidence": [
+      "R_CN0_SHIFT",
+      "R_DOP_DEGRADATION"
+    ]
+  },
+  "whole_drive_simulator_model": {
+    "alert_seconds": 1467,
+    "episodes": 26,
+    "longest_episode_s": 627,
+    "alert_seconds_per_hour": 3194.9,
+    "episodes_per_hour": 56.6,
+    "min_trust": 18.8,
+    "mean_trust": 38.0
+  },
+  "whole_drive_cn0_sats_baseline": {
+    "alert_seconds": 86,
+    "alert_seconds_per_hour": 187.3
+  },
+  "recalibrated": {
+    "fit_seconds": 720,
+    "calibration_seconds": 420,
+    "test_seconds": 513,
+    "test_moving_seconds": 329,
+    "test_no_attack": {
+      "alert_seconds": 0,
+      "episodes": 0,
+      "longest_episode_s": 0,
+      "alert_seconds_per_hour": 0.0,
+      "episodes_per_hour": 0.0,
+      "min_trust": 59.7,
+      "mean_trust": 93.6
+    },
+    "test_no_attack_rules_only": {
+      "alert_seconds": 0,
+      "episodes": 0,
+      "longest_episode_s": 0,
+      "alert_seconds_per_hour": 0.0,
+      "episodes_per_hour": 0.0,
+      "min_trust": 90.0,
+      "mean_trust": 99.7
+    },
+    "test_no_attack_simulator_model": {
+      "alert_seconds": 450,
+      "episodes": 11,
+      "longest_episode_s": 311,
+      "alert_seconds_per_hour": 3157.9,
+      "episodes_per_hour": 77.2,
+      "min_trust": 18.8,
+      "mean_trust": 37.5
+    }
+  },
+  "overlays": {
+    "teleport_east_m": 8000.0,
+    "drift_mps": 0.7,
+    "drift_bearing_deg": 45.0,
+    "jam_cn0_drop_dbhz": 15.0,
+    "jam_fix_lost_after_s": 2,
+    "runs": [
+      {
+        "kind": "teleport",
+        "attack_start_s": 90,
+        "attack_seconds": 423,
+        "rules": {
+          "first_alert_delay_s": 0,
+          "false_alerts_before_s": 0,
+          "hold_after_s": 0,
+          "held_seconds": 423,
+          "raw_max_error_m": 8001.0,
+          "protected_max_error_m": 0.8,
+          "protected_mean_error_m": 0.5,
+          "raw_blank_s": 0,
+          "protected_blank_s": 0
+        },
+        "hybrid": {
+          "first_alert_delay_s": 0,
+          "false_alerts_before_s": 0,
+          "hold_after_s": 0,
+          "held_seconds": 423,
+          "raw_max_error_m": 8001.0,
+          "protected_max_error_m": 0.8,
+          "protected_mean_error_m": 0.5,
+          "raw_blank_s": 0,
+          "protected_blank_s": 0
+        }
+      },
+      {
+        "kind": "drift",
+        "attack_start_s": 90,
+        "attack_seconds": 423,
+        "rules": {
+          "first_alert_delay_s": null,
+          "false_alerts_before_s": 0,
+          "hold_after_s": null,
+          "held_seconds": 0,
+          "raw_max_error_m": 276.8,
+          "protected_max_error_m": 276.8,
+          "protected_mean_error_m": 138.5,
+          "raw_blank_s": 0,
+          "protected_blank_s": 0
+        },
+        "hybrid": {
+          "first_alert_delay_s": 35,
+          "false_alerts_before_s": 0,
+          "hold_after_s": 35,
+          "held_seconds": 388,
+          "raw_max_error_m": 276.8,
+          "protected_max_error_m": 24.2,
+          "protected_mean_error_m": 15.6,
+          "raw_blank_s": 0,
+          "protected_blank_s": 0
+        }
+      },
+      {
+        "kind": "jam",
+        "attack_start_s": 90,
+        "attack_seconds": 423,
+        "rules": {
+          "first_alert_delay_s": null,
+          "false_alerts_before_s": 0,
+          "hold_after_s": 2,
+          "held_seconds": 421,
+          "raw_max_error_m": 0.8,
+          "protected_max_error_m": 0.8,
+          "protected_mean_error_m": 0.5,
+          "raw_blank_s": 421,
+          "protected_blank_s": 0
+        },
+        "hybrid": {
+          "first_alert_delay_s": 1,
+          "false_alerts_before_s": 0,
+          "hold_after_s": 1,
+          "held_seconds": 422,
+          "raw_max_error_m": 0.8,
+          "protected_max_error_m": 0.8,
+          "protected_mean_error_m": 0.5,
+          "raw_blank_s": 421,
+          "protected_blank_s": 0
+        }
+      }
+    ]
+  }
+}

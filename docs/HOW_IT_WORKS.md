@@ -128,7 +128,7 @@ Detection alone leaves the operator looking at a lie, so the score drives a resp
 | below 50, or no fix | **hold** | an estimate: the last trusted fix advanced by the **odometer speed along the planned route** (a spoofer cannot touch the odometer); without a route, along the last trusted heading | VERIFY (confirm by other means before acting) |
 | below 25, or a critical rule (OSNMA failed, 4× jump) | **hold** | the same estimate | ISOLATE (do not act on this device; a drone holds or returns on inertial navigation, a driver is contacted) |
 
-A hold ends only after **five clean seconds and a fix that rejoins the estimate** (within 60 m plus 3 % of the distance travelled while held), so a spoofer cannot end the hold by looking clean while still far away. After 60 clean seconds it releases anyway and reports the discrepancy, because an odometer estimate drifts too.
+A hold ends only after **five clean seconds and a fix that rejoins the estimate** (within 60 m plus 3 % of the distance travelled while held), so a spoofer cannot end the hold by looking clean while still far away. After 60 clean seconds it releases with a tolerance ten times looser and reports the discrepancy, because an odometer estimate drifts too; a fix that is still kilometres away stays refused (found on a real recording: without this bound, a teleported fix that kept moving consistently was taken back after a minute).
 
 Where the route doubles back on itself (the same street in both directions), `Route.project()` uses the direction of travel and continuity to pick the right leg, otherwise the estimate would advance the wrong way.
 
@@ -186,7 +186,7 @@ The simulator is deterministic (seeded), so every result can be reproduced exact
 
 ```bash
 cd engine && python -m pip install -r requirements.txt
-python -m pytest -q                       # 28 tests
+python -m pytest -q                       # 32 tests
 python -m trustnav_engine.evaluate        # train + held-out metrics
 python -m trustnav_engine.stream --dry-run --speed 10
 python -m trustnav_engine.receiver --file drive.nmea --speed 0 --dry-run   # a saved receiver log

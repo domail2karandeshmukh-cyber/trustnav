@@ -70,6 +70,7 @@ def build():
             "Route deviation assumes the vehicle follows an assigned route (delivery fleet, survey drone). A driver who changes route will look like drift.",
             "One observation is one evaluation unit. A long attack contributes many correlated rows, so per-observation scores are not per-attack accuracy.",
             "OSNMA status is simulated. A relay (meaconing) attack can pass OSNMA, which the stealth drift scenario shows.",
+            "On a public 27.6-minute u-blox ZED-F9K drive recording (python -m trustnav_engine.realcheck) the rules raise no false alarm, but the model trained on the simulator alerts on 89 % of the seconds: it must be re-calibrated on the receiver actually used. Re-calibrated on the first 19 minutes of that drive it raises no alert in the remaining 8.5 minutes and catches overlaid teleport, drift and jamming in 0, 35 and 1 s.",
         ],
     }
 

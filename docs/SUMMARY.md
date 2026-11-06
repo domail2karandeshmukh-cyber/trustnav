@@ -16,7 +16,9 @@ Rules and model are combined by noisy-OR (either witness can raise the alarm); t
 
 **Built.** Python engine (36 features, 15 rules, scikit-learn, 23 automated tests), Supabase cloud (Postgres, row-level security, realtime, token-authenticated ingest), Next.js console with a 3D street map of Angers, replay of ten recorded scenarios, a narrated attack story, a space-time view, and a live demo at https://trustnav.vercel.app. A receiver adapter for u-blox NMEA/UBX output is written and tested, ready for the first real antenna.
 
-**Limits.** All data so far is simulated by one simulator, so the numbers are an upper bound. Nothing is transmitted; attacks exist only in software. It detects and responds; it cannot remove a jammer from the air.
+**Real receiver.** On a public 27.6-minute u-blox ZED-F9K drive recording the rules raise no false alarm, the simulator-trained model must be re-calibrated on the receiver (it alerts on 89 % of the seconds before, on none of the last 8.5 minutes after), and overlaid teleport, drift and jamming are then caught in 0, 35 and 1 s.
+
+**Limits.** The evaluation data are simulated by one simulator, so the numbers are an upper bound. Nothing is transmitted; attacks exist only in software. It detects and responds; it cannot remove a jammer from the air.
 
 **Next.** Plug in a real receiver (about 60 to 250 EUR), record normal drives around Angers, re-calibrate, then replay public attack recordings (Jammertest, TEXBAT) through the same pipeline. See `ROADMAP.md`.
 

@@ -8,9 +8,10 @@ IEEEtran format), in two languages:
 | `trustnav.tex` | English (the reference version) | `trustnav.pdf` |
 | `trustnav_fr.tex` | French | `trustnav_fr.pdf` |
 
-Both are exactly six pages and carry the same sections, figures, tables and
-numbers. The French version is a little more condensed, because French runs
-about 15% longer than English for the same content.
+Both are exactly six pages and carry the same sections, tables and numbers.
+The French version is more condensed, because French runs about 15% longer
+than English for the same content; it quotes the console verdict in text
+instead of showing the screenshot.
 
 ## Build
 
@@ -42,10 +43,11 @@ python3 paper/figures/make_figures.py
 | File | What it is |
 |---|---|
 | `figures/fig_timeline_{en,fr}.pdf` | trust and position error, second by second, for four held-out scenarios (Fig. 3) |
-| `figures/fig_sens_{en,fr}.pdf` | alert-line sweep, calibration per risk band, fusion-weight grid (Fig. 4) |
-| `figures/console-verdict-wide.png` | the console's verdict panel for the forged-Galileo-data scenario, captured at 2x from the deployed build (Fig. 2); `console-verdict.png` and `console-replay.png` are the single-panel crop and the full screen it was cut from |
+| `figures/fig_sens_{en,fr}.pdf` | alert-line sweep, calibration per risk band, fusion-weight grid (Fig. 4; Fig. 3 in the French version) |
+| `figures/console-verdict-wide.png` | the console's verdict panel for the forged-Galileo-data scenario, captured at 2x from the deployed build (Fig. 2 of the English version; the French version quotes the verdict in text to stay within six pages); `console-verdict.png` and `console-replay.png` are the single-panel crop and the full screen it was cut from |
 | `figures/fig_map_{en,fr}.pdf`, `figures/fig_roc_{en,fr}.pdf` | map view of the response layer, and ROC / precision–recall curves; drawn but not placed in the paper for space (the AUCs are in Table III) |
 | `figures/analysis.json` | every quoted statistic, with the inputs it was computed from |
+| `figures/realcheck.json` | the real-receiver check of Section V-E (`python -m trustnav_engine.realcheck`, run from `engine/`): the public u-blox ZED-F9K drive recording replayed through the detector, the model re-calibrated on it, attacks overlaid |
 | `figures/make_figures.py` | the script that draws the plots and writes `analysis.json` |
 
 Colours follow the Okabe–Ito palette, so every line stays distinguishable for

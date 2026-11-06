@@ -87,6 +87,10 @@ def _f(v):
         return None
 
 
+# NMEA 4.10 signal IDs of each constellation's primary band (talker ID -> signal ID)
+PRIMARY_SIGNAL = {"GP": "1", "GL": "1", "GA": "7", "GB": "1", "GQ": "1", "GN": "1"}
+
+
 def parse_nmea(line):
     """One sentence -> (kind, dict) or None. Talker IDs (GP, GN, GA, GL, GB) are ignored."""
     line = line.strip()
@@ -108,11 +112,21 @@ def parse_nmea(line):
         if kind == "GSA":
             return "GSA", {"fix_type": int(parts[2] or 1), "pdop": _f(parts[15]), "hdop": _f(parts[16]), "vdop": _f(parts[17])}
         if kind == "GSV":
+            # NMEA 4.10 appends a signal ID; a multi-band receiver then sends one GSV
+            # set per band. C/N0 statistics are taken on the primary band only (GPS L1 C/A,
+            # GLONASS L1, Galileo E1, BeiDou B1), which is what the simulator and the rules
+            # describe; older receivers without the field are single band and pass as is.
+            sats = parts[4:]
+            signal = None
+            if len(sats) % 4 == 1:
+                signal, sats = sats[-1], sats[:-1]
+            primary = PRIMARY_SIGNAL.get(parts[0][:2], "1")
             snr = []
-            for k in range(4, len(parts) - 3, 4):
-                s = _f(parts[k + 3])
-                if s is not None and parts[k]:
-                    snr.append(s)
+            if signal in (None, "", primary):
+                for k in range(0, len(sats) - 3, 4):
+                    s = _f(sats[k + 3])
+                    if s is not None and sats[k]:
+                        snr.append(s)
             return "GSV", {"total": int(parts[1] or 1), "n": int(parts[2] or 1), "in_view": int(parts[3] or 0), "snr": snr}
     except (ValueError, IndexError):
         return None
