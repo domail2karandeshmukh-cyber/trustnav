@@ -1,6 +1,6 @@
 # TrustNav: IEEE conference paper
 
-The project report written as a six-page IEEE conference paper (two-column
+The project written up as a six-page IEEE conference paper (two-column
 IEEEtran format), in two languages:
 
 | File | Language | Compiled copy |
@@ -8,26 +8,32 @@ IEEEtran format), in two languages:
 | `trustnav.tex` | English (the reference version) | `trustnav.pdf` |
 | `trustnav_fr.tex` | French | `trustnav_fr.pdf` |
 
-Both are 6 pages. The French version carries the same text, tables and
-numbers; it omits one figure (the map view) to stay within six pages.
+Both are exactly six pages and carry the same sections, figures, tables and
+numbers. The French version is a little more condensed, because French runs
+about 15% longer than English for the same content.
 
 ## Build
 
 ```bash
 cd paper
 pdflatex trustnav.tex && pdflatex trustnav.tex        # English
-pdflatex trustnav_fr.tex && pdflatex trustnav_fr.tex  # French (needs babel-french)
+pdflatex trustnav_fr.tex && pdflatex trustnav_fr.tex  # French (needs babel-french, present on Overleaf)
 ```
 
 `IEEEtran.cls` (the official IEEE class, version 1.8b) is shipped in this folder
 so the paper builds on any TeX installation, including Overleaf: upload the whole
-`paper/` folder as a project and compile `trustnav.tex` with pdfLaTeX.
+`paper/` folder as a project and compile with pdfLaTeX. Both builds are clean
+(no overfull or underfull boxes).
 
-## Figures
+## Figures and numbers
 
 Every plot is a vector PDF drawn from the evaluation data the engine exports
-(`dashboard/public/data/replay.json`), so the figures agree with the tables by
-construction. Regenerate them with:
+(`dashboard/public/data/replay.json` and `meta.json`), so the figures agree
+with the tables by construction. The same script also recomputes every
+statistic the text quotes that is not in a table (event-level detection
+delays, false-alarm episodes, the threshold sweep, the MOPS-style baseline,
+scenario-level bootstrap intervals, calibration per risk band) and writes them
+to `figures/analysis.json`:
 
 ```bash
 python3 paper/figures/make_figures.py
@@ -36,10 +42,21 @@ python3 paper/figures/make_figures.py
 | File | What it is |
 |---|---|
 | `figures/fig_timeline_{en,fr}.pdf` | trust and position error, second by second, for four held-out scenarios (Fig. 3) |
-| `figures/fig_map_{en,fr}.pdf` | the response layer seen from above for the forgery and drone scenarios (Fig. 4, English version) |
-| `figures/fig_roc_{en,fr}.pdf` | ROC and precision–recall curves of the three detectors (not placed in the paper for space; the AUCs are in Table II) |
-| `figures/console-replay.png` | the console replaying the forgery scenario, captured at 2x from the deployed build (Fig. 2) |
-| `figures/make_figures.py` | the script that draws the plots |
+| `figures/fig_sens_{en,fr}.pdf` | alert-line sweep, calibration per risk band, fusion-weight grid (Fig. 4) |
+| `figures/console-verdict-wide.png` | the console's verdict panel for the forged-Galileo-data scenario, captured at 2x from the deployed build (Fig. 2); `console-verdict.png` and `console-replay.png` are the single-panel crop and the full screen it was cut from |
+| `figures/fig_map_{en,fr}.pdf`, `figures/fig_roc_{en,fr}.pdf` | map view of the response layer, and ROC / precision–recall curves; drawn but not placed in the paper for space (the AUCs are in Table III) |
+| `figures/analysis.json` | every quoted statistic, with the inputs it was computed from |
+| `figures/make_figures.py` | the script that draws the plots and writes `analysis.json` |
 
-Every number in the paper comes from `dashboard/public/data/meta.json`; the
-longer technical documentation is in `docs/`.
+Colours follow the Okabe–Ito palette, so every line stays distinguishable for
+colour-blind readers and in greyscale; fonts are embedded (Liberation Serif).
+
+## Checks before submitting
+
+- Spelling: `detex` + a dictionary pass over both files (proper nouns and
+  British spellings are expected).
+- Numbers: every numeric token in the French file is compared with the English
+  one (decimal commas converted), and the English numbers are compared with
+  `figures/analysis.json` and `dashboard/public/data/meta.json`.
+- Page count: `pdfinfo trustnav.pdf | grep Pages` must say 6, and the log must
+  contain no `Overfull` or `Underfull` lines.

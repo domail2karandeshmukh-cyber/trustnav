@@ -186,7 +186,7 @@ The simulator is deterministic (seeded), so every result can be reproduced exact
 
 ```bash
 cd engine && python -m pip install -r requirements.txt
-python -m pytest -q                       # 23 tests
+python -m pytest -q                       # 28 tests
 python -m trustnav_engine.evaluate        # train + held-out metrics
 python -m trustnav_engine.stream --dry-run --speed 10
 python -m trustnav_engine.receiver --file drive.nmea --speed 0 --dry-run   # a saved receiver log
