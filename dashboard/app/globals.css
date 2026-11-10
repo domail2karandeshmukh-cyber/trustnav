@@ -780,7 +780,7 @@ kbd { padding: 1px 5px; border: 1px solid var(--line); border-bottom-width: 2px;
 .real-grid { display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr); gap: 20px; margin-top: 18px; align-items: stretch; }
 .real-map { margin: 0; background: var(--paper); border: 1px solid var(--line); border-radius: 16px; padding: 10px 14px 12px; display: grid; gap: 6px; }
 .real-map svg { width: 100%; height: auto; display: block; }
-.real-lab { font: 500 12.5px var(--display); fill: var(--ink-2); letter-spacing: .02em; }
+.real-lab { font: 500 12.5px var(--display); fill: var(--ink-2); letter-spacing: .02em; paint-order: stroke; stroke: var(--paper); stroke-width: 5px; stroke-linejoin: round; }
 .real-lab.hot { fill: var(--untrusted); font-weight: 600; }
 .real-map figcaption { display: flex; flex-wrap: wrap; gap: 6px 18px; font-size: 13px; color: var(--ink-2); }
 .real-map figcaption span { display: inline-flex; align-items: center; gap: 7px; }

@@ -20,7 +20,7 @@ export default function HeroScene() {
     const size = () => { const r = cv.getBoundingClientRect(); w = r.width; h = r.height; cv.width = Math.round(w * dpr); cv.height = Math.round(h * dpr); };
     size();
     const ro = new ResizeObserver(size); ro.observe(cv);
-    const css = () => { const s = getComputedStyle(document.documentElement); const v = (n: string) => s.getPropertyValue(n).trim(); return { ok: v("--trusted"), bad: v("--untrusted"), line: v("--line"), ink: v("--ink"), ink3: v("--ink-3"), chart: v("--chart"), warn: v("--degraded"), font: v("--display") || "system-ui, sans-serif" }; };
+    const css = () => { const s = getComputedStyle(document.documentElement); const v = (n: string) => s.getPropertyValue(n).trim(); return { ok: v("--trusted"), bad: v("--untrusted"), line: v("--line"), ink: v("--ink"), ink3: v("--ink-3"), chart: v("--chart"), warn: v("--degraded"), paper: v("--paper"), font: v("--display") || "system-ui, sans-serif" }; };
     const t0 = performance.now();
 
     const draw = (now: number) => {
@@ -31,6 +31,8 @@ export default function HeroScene() {
       const k = Math.min(wide ? w * 0.34 : w * 0.8, h * (wide ? 0.62 : 0.36)) / 1700;   // px per metre
       const P = (p: [number, number] | number[]): [number, number] => [cx + (p[0] + 560) * k, cy + (p[1] - 700) * k];
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0); ctx.clearRect(0, 0, w, h);
+      // a label with a halo in the page colour, so the lines under it do not cut through the letters
+      const label = (s: string, x: number, y: number) => { ctx.lineJoin = "round"; ctx.lineWidth = 5; ctx.strokeStyle = c.paper; ctx.setLineDash([]); ctx.strokeText(s, x, y); ctx.fillText(s, x, y); };
       ctx.globalAlpha = wide ? 1 : 0.55;
 
       // where the van is on its recorded track
@@ -75,8 +77,8 @@ export default function HeroScene() {
         if (wide && since > 0.5) {
           const dl = Math.hypot(far[0] - van[0], far[1] - van[1]) || 1, lx = van[0] + (far[0] - van[0]) / dl * 120, ly = van[1] + (far[1] - van[1]) / dl * 120;
           ctx.font = `600 12px ${c.font}`; ctx.fillStyle = c.bad; ctx.textAlign = "left";
-          ctx.fillText("REPORTED POSITION: 8.0 KM AWAY", lx + 6, ly - 22);
-          ctx.fillStyle = c.ink3; ctx.font = "500 12px system-ui, sans-serif"; ctx.fillText("refused by TrustNav", lx + 6, ly - 6);
+          label("REPORTED POSITION: 8.0 KM AWAY", lx + 6, ly - 22);
+          ctx.fillStyle = c.ink3; ctx.font = "500 12px system-ui, sans-serif"; label("refused by TrustNav", lx + 6, ly - 6);
         }
       }
 
@@ -87,8 +89,8 @@ export default function HeroScene() {
       if (attack) { ctx.beginPath(); ctx.arc(van[0], van[1], 17, 0, 7); ctx.strokeStyle = c.ok; ctx.lineWidth = 2; ctx.setLineDash([4, 4]); ctx.stroke(); ctx.setLineDash([]); }
       if (wide) {
         ctx.font = `600 12px ${c.font}`; ctx.fillStyle = c.ok; ctx.textAlign = "right";
-        ctx.fillText(attack ? "PROTECTED POSITION" : "REAL POSITION", van[0] - 30, van[1] - 22);
-        ctx.fillStyle = c.ink3; ctx.font = "500 12px system-ui, sans-serif"; ctx.fillText(attack ? "tracked by odometer" : "Angers, centre loop", van[0] - 30, van[1] - 6);
+        label(attack ? "PROTECTED POSITION" : "REAL POSITION", van[0] - 30, van[1] - 22);
+        ctx.fillStyle = c.ink3; ctx.font = "500 12px system-ui, sans-serif"; label(attack ? "tracked by odometer" : "Angers, centre loop", van[0] - 30, van[1] - 6);
       }
 
       // the trust gauge
