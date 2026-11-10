@@ -121,14 +121,18 @@ async def main():
         await axe(pg, "replay")
         # results + method
         await pg.keyboard.press("3"); await pg.wait_for_selector(".compare", timeout=15000)
-        check("results: comparison table", await pg.locator(".compare tbody tr").count() >= 6)
+        check("results: scoreboard and comparison table", await pg.locator(".score-tile").count() == 4 and await pg.locator(".score-bar").count() == 9 and await pg.locator(".compare tbody tr").count() >= 6)
         check("results: scenario tapes", await pg.locator(".scen .tape").count() >= 10)
         prot = await pg.locator("h2:has-text('What the response layer prevents')").count()
         check("results: protection section", prot == 1)
-        check("results: protection rows", await pg.locator(".scen").nth(1).locator("tbody tr").count() >= 10)
+        await pg.wait_for_selector(".real-attack", timeout=15000)
+        check("results: protection rows and the real-receiver section", await pg.locator(".scen").nth(1).locator("tbody tr").count() >= 10
+              and await pg.locator(".real-attack").count() == 3 and await pg.locator(".real-map svg path").count() == 6 and "0.8 m" in (await pg.locator(".real-attacks").inner_text()))
         await axe(pg, "results")
         await pg.keyboard.press("4"); await pg.wait_for_selector(".pipeline")
-        check("method: pipeline figure", await pg.locator(".pipeline > div").count() >= 6)
+        await pg.locator(".lab-presets .btn:has-text('Stealth drift')").click(); await pg.wait_for_timeout(300)
+        lab = await pg.locator(".lab-verdict").inner_text()
+        check("method: pipeline figure and fusion lab", await pg.locator(".pipeline > div").count() >= 6 and "Fix refused" in lab and "= 80" in lab, lab[:60])
         check("method: response section", await pg.locator("h2:has-text('From detection to response')").count() == 1)
         check("method: comparison table", await pg.locator(".compare.landscape tbody tr").count() == 8)
         await axe(pg, "method")
@@ -236,7 +240,8 @@ async def main():
         # ---- opening screen + story ----
         ctx, pg, errs = await page_for(b, 1440, 900, tour_done=False)
         await pg.wait_for_selector(".hero", timeout=15000)
-        check("hero: shows on first visit", await pg.locator(".hero h1").count() == 1)
+        og = await pg.locator('meta[property="og:image"]').get_attribute("content") or ""
+        check("hero: shows on first visit, with its scene and a link preview image", await pg.locator(".hero h1").count() == 1 and await pg.locator(".hero canvas.hero-scene").count() == 1 and "opengraph-image" in og, og[:70])
         check("v8: hero offers the narrated explainer", await pg.locator(".hero .hero-btn:has-text('Explain it to me')").count() == 1)
         check("v9: hero language menu with ten languages", await pg.locator(".hero-lang option").count() == 10)
         await pg.locator(".hero-lang select").select_option("fr"); await pg.wait_for_timeout(300)

@@ -76,6 +76,25 @@ def ref_of(ref, o):
     return ref.get(o["t"][11:19]) if ref else None
 
 
+def track_summary(obs, ref, fit_s, cal_s, attack_at, step=4):
+    """The drive as a polyline for drawing: every `step`-th second of the reference track, in metres east and north
+    of the first point, each labelled 0 (fit), 1 (calibration) or 2 (test), and the point where the overlays start.
+    Segments are cut at the timestamps of the observations that bound them, so gaps in the receiver log do not move them."""
+    clock = lambda i: obs[min(i, len(obs) - 1)]["t"][11:19]
+    t_cal, t_test, t_attack, t_end = clock(fit_s), clock(fit_s + cal_s), clock(fit_s + cal_s + attack_at), clock(len(obs) - 1)
+    keys = [k for k in sorted(ref) if clock(0) <= k <= t_end]      # one UTC day: the recording does not cross midnight
+    if not keys:
+        return None
+    lat0, lon0 = ref[keys[0]]
+    kx = 111320.0 * math.cos(math.radians(lat0))
+    xy = lambda k: [round((ref[k][1] - lon0) * kx), round((ref[k][0] - lat0) * 110540.0)]
+    seg = lambda k: 0 if k < t_cal else 1 if k < t_test else 2
+    start = next((k for k in keys if k >= t_attack), None)
+    return {"unit": "metres east and north of the first point; third value: 0 fit, 1 calibration, 2 test",
+            "points": [xy(k) + [seg(k)] for k in keys[::step]],
+            "overlay_start": xy(start) if start else None}
+
+
 def route_from_reference(ref, min_step_m=3.0):
     """The reference track, thinned, as the assigned route."""
     pts, last = [], None
@@ -197,7 +216,7 @@ def main(argv=None):
     ap.add_argument("--attack-at", type=int, default=90, help="seconds into the test segment when each overlay starts")
     ap.add_argument("--no-route", action="store_true", help="do not use the reference track as the assigned route")
     ap.add_argument("--no-odometer", action="store_true", help="do not use the reference speed as the odometer")
-    ap.add_argument("--out", default=None, help="write the results as JSON here")
+    ap.add_argument("--out", nargs="+", default=None, help="write the results as JSON here (one or more paths)")
     args = ap.parse_args(argv)
 
     settings = chosen_settings()
@@ -258,6 +277,9 @@ def main(argv=None):
                        "jam_cn0_drop_dbhz": JAM_CN0_DROP_DBHZ, "jam_fix_lost_after_s": JAM_FIX_LOST_AFTER_S,
                        "runs": [run_overlay(test_obs, k, args.attack_at, real_model, settings, ref, route) for k in ("teleport", "drift", "jam")]}
 
+    if ref:
+        res["track"] = track_summary(obs, ref, args.fit_s, args.cal_s, args.attack_at)
+
     print(f"{res['source']}: {res['duration_min']} min, {res['moving_seconds']} s moving, max {res['max_speed_mps']} m/s")
     print(f"  rules only, whole drive: {res['whole_drive_rules_only']['alert_seconds']} alert s, min trust {res['whole_drive_rules_only']['min_trust']}")
     print(f"  simulator model, whole drive: {res['whole_drive_simulator_model']['alert_seconds']} alert s of {n}")
@@ -269,9 +291,9 @@ def main(argv=None):
         print(f"  {r['kind']:8s} rules {r['rules']['first_alert_delay_s']} s / hybrid {r['hybrid']['first_alert_delay_s']} s; "
               f"raw max {r['hybrid']['raw_max_error_m']} m, protected max {r['hybrid']['protected_max_error_m']} m, "
               f"blank {r['hybrid']['raw_blank_s']}/{r['hybrid']['protected_blank_s']} s, false before {r['hybrid']['false_alerts_before_s']}")
-    if args.out:
-        Path(args.out).write_text(json.dumps(res, indent=2))
-        print("wrote", args.out)
+    for out in args.out or []:
+        Path(out).write_text(json.dumps(res, indent=2))
+        print("wrote", out)
     return res
 
 

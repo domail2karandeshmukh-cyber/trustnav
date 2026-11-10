@@ -9,11 +9,12 @@ import "./globals.css";
 
 const description = "Live trust scoring of GNSS positions for vehicle and drone fleets: spoofing and jamming detection with Galileo OSNMA, physical rules and unsupervised anomaly models.";
 export const metadata: Metadata = {
+  metadataBase: new URL("https://trustnav.vercel.app"),
   title: "TrustNav: GNSS trust monitoring",
   description,
   applicationName: "TrustNav",
   openGraph: { title: "TrustNav", description, type: "website", siteName: "TrustNav" },
-  twitter: { card: "summary", title: "TrustNav", description },
+  twitter: { card: "summary_large_image", title: "TrustNav", description },
 };
 
 export const viewport: Viewport = { themeColor: "#ffffff", width: "device-width", initialScale: 1 };

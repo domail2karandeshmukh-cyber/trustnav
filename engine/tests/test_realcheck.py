@@ -4,7 +4,7 @@ import itertools
 
 from trustnav_engine.demo_feed import chosen_settings
 from trustnav_engine.pipeline import Detector
-from trustnav_engine.realcheck import DEFAULT_LOG, DEFAULT_REF, RealOverlay, load_reference, route_from_reference
+from trustnav_engine.realcheck import DEFAULT_LOG, DEFAULT_REF, RealOverlay, load_reference, route_from_reference, track_summary
 from trustnav_engine.receiver import iter_bytes_from_file, observations
 
 
@@ -21,13 +21,18 @@ def test_real_log_parses_into_one_observation_per_second_with_primary_band_cn0()
     assert all(o["lat"] is not None and o["sats"] == 12 for o in obs)
 
 
-def test_rules_raise_nothing_on_the_real_drive_opening():
+def test_rules_raise_nothing_on_the_real_drive_opening_and_its_track_can_be_drawn():
     obs = first_epochs(300)
     ref, _ = load_reference(str(DEFAULT_REF))
     det = Detector(None, route_from_reference(ref), "generic_road_vehicle", chosen_settings(), "RX-REAL", "receiver")
     frames = [det.process(o)[0] for o in obs]
     assert min(f["trust"] for f in frames) >= 90.0
     assert all(f["resp"]["mode"] == "accept" for f in frames)
+    # the same drive as a polyline for the results page: fit, calibration and test segments in order
+    track = track_summary(obs, ref, fit_s=100, cal_s=100, attack_at=30, step=5)
+    labels = [p[2] for p in track["points"]]
+    assert track["points"][0][:2] == [0, 0] and labels == sorted(labels) and set(labels) == {0, 1, 2}
+    assert track["overlay_start"] is not None and len(track["points"]) == 60
 
 
 def test_jam_overlay_degrades_then_removes_the_fix():

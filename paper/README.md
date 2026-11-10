@@ -47,7 +47,7 @@ python3 paper/figures/make_figures.py
 | `figures/console-verdict-wide.png` | the console's verdict panel for the forged-Galileo-data scenario, captured at 2x from the deployed build (Fig. 2 of the English version; the French version quotes the verdict in text to stay within six pages); `console-verdict.png` and `console-replay.png` are the single-panel crop and the full screen it was cut from |
 | `figures/fig_map_{en,fr}.pdf`, `figures/fig_roc_{en,fr}.pdf` | map view of the response layer, and ROC / precision–recall curves; drawn but not placed in the paper for space (the AUCs are in Table III) |
 | `figures/analysis.json` | every quoted statistic, with the inputs it was computed from |
-| `figures/realcheck.json` | the real-receiver check of Section V-E (`python -m trustnav_engine.realcheck`, run from `engine/`): the public u-blox ZED-F9K drive recording replayed through the detector, the model re-calibrated on it, attacks overlaid |
+| `figures/realcheck.json` | the real-receiver check of Section V-E (`python -m trustnav_engine.realcheck`, run from `engine/`): the public u-blox ZED-F9K drive recording replayed through the detector, the model re-calibrated on it, attacks overlaid; it also carries the drive as a polyline, which the site's Results page draws (a copy is in `dashboard/public/data/`) |
 | `figures/make_figures.py` | the script that draws the plots and writes `analysis.json` |
 
 Colours follow the Okabe–Ito palette, so every line stays distinguishable for

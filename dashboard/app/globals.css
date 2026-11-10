@@ -10,12 +10,12 @@
   --ink-3: #5f6c84;
   --chart: #1f5fbf;
   --chart-soft: #e9f0fb;
-  --trusted: #11865f;
+  --trusted: #0e7a56;
   --degraded: #8f6500;
-  --suspicious: #c64f19;
+  --suspicious: #b8460f;
   --untrusted: #c2185b;
   --s-rule: #1f5fbf;
-  --s-ml: #8a5cc7;
+  --s-ml: #7b4cba;
   --shadow: 0 1px 2px rgba(20, 35, 59, .07), 0 8px 24px rgba(20, 35, 59, .09);
   --display: "Barlow Semi Condensed", "Barlow", system-ui, sans-serif;
   --hl: #f0f5fc;
@@ -775,3 +775,30 @@ kbd { padding: 1px 5px; border: 1px solid var(--line); border-bottom-width: 2px;
 @media (max-width: 1100px) { .lab-body { grid-template-columns: minmax(0, 1fr); } .lab-out { grid-template-columns: 1fr 1fr; } .lab-verdict { grid-column: 1 / -1; } }
 @media (min-width: 1300px) { .pipeline { grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 0 26px; } }
 .compare th.hl small { color: var(--ink-2); }
+
+/* v11: real receiver section */
+.real-grid { display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr); gap: 20px; margin-top: 18px; align-items: stretch; }
+.real-map { margin: 0; background: var(--paper); border: 1px solid var(--line); border-radius: 16px; padding: 10px 14px 12px; display: grid; gap: 6px; }
+.real-map svg { width: 100%; height: auto; display: block; }
+.real-lab { font: 500 12.5px var(--display); fill: var(--ink-2); letter-spacing: .02em; }
+.real-lab.hot { fill: var(--untrusted); font-weight: 600; }
+.real-map figcaption { display: flex; flex-wrap: wrap; gap: 6px 18px; font-size: 13px; color: var(--ink-2); }
+.real-map figcaption span { display: inline-flex; align-items: center; gap: 7px; }
+.real-map figcaption i { width: 18px; height: 4px; border-radius: 2px; display: block; }
+.real-facts { display: grid; gap: 12px; }
+.real-fact { display: grid; grid-template-columns: 112px minmax(0, 1fr); align-items: center; gap: 14px; background: var(--paper); border: 1px solid var(--line); border-radius: 16px; padding: 14px 18px; }
+.real-fact > b { font: 600 44px/1 var(--display); letter-spacing: -.02em; text-align: center; font-variant-numeric: tabular-nums; }
+.real-fact strong { display: block; font-size: 15.5px; font-weight: 600; color: var(--ink); margin-bottom: 3px; }
+.real-fact span { font-size: 13.5px; line-height: 1.45; color: var(--ink-2); }
+.real-attacks { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; margin-top: 14px; }
+.real-attack { border: 1px solid var(--line); border-radius: 16px; padding: 16px 18px; }
+.real-attack h3 { margin: 0; font: 600 18px/1.2 var(--display); }
+.real-attack h3 small { display: block; font-family: "Barlow", system-ui, sans-serif; font-size: 13.5px; font-weight: 400; line-height: 1.4; color: var(--ink-2); margin-top: 2px; }
+.real .note { max-width: none; margin-top: 16px; }
+.real-delay { margin: 12px 0 10px !important; font-size: 13.5px; color: var(--ink-2); }
+.real-delay b { font: 600 26px/1 var(--display); color: var(--ink); margin-right: 6px; }
+.real-attack dl { margin: 0; display: grid; gap: 0; }
+.real-attack dl div { display: flex; justify-content: space-between; gap: 12px; padding: 7px 0; border-top: 1px solid var(--line-soft); font-size: 13.5px; }
+.real-attack dt { color: var(--ink-2); } .real-attack dd { margin: 0; font-weight: 600; text-align: right; }
+.real-attack dd.ok { color: var(--trusted); }
+@media (max-width: 900px) { .real-grid, .real-attacks { grid-template-columns: minmax(0, 1fr); } .real-fact { grid-template-columns: 84px minmax(0, 1fr); } .real-fact > b { font-size: 34px; } }

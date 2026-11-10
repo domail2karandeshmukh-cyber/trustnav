@@ -4,8 +4,8 @@ import { useEffect, useRef } from "react";
 import { HERO_ATTACK_INDEX, HERO_LIE, HERO_ROUTE, HERO_TRACK } from "@/lib/hero-path";
 
 const CYCLE = 11;        // seconds per loop
-const ATTACK_AT = 4.2;   // the spoof starts
-const ATTACK_END = 9.2;  // and stops
+const ATTACK_AT = (HERO_ATTACK_INDEX / (HERO_TRACK.length - 1)) * (CYCLE - 0.6);   // the spoof starts where it did in the recording
+const ATTACK_END = ATTACK_AT + 4.8;                                                 // and the loop shows a few seconds of it
 
 /** The opening scene: a van on its real Angers route, a spoof that throws the reported position 8 km away, and the trust score reacting.
  *  Pure canvas, drawn from the recorded teleport scenario; a still frame when the visitor prefers reduced motion. */

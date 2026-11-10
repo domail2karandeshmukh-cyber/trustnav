@@ -3,6 +3,7 @@
 import type { ReplayData } from "@/lib/types";
 import { dist, fmt, pct, span } from "@/lib/format";
 import { TrustTape } from "./Instruments";
+import RealCheck from "./RealCheck";
 
 type Meta = Omit<ReplayData, "scenarios" | "routes"> & { scenarios: Omit<ReplayData["scenarios"][number], "frames">[] };
 
@@ -170,6 +171,8 @@ export default function ResultsView({ meta, replay, onOpen }: { meta: Meta; repl
           </p>
         </section>
       )}
+
+      <RealCheck />
 
       <section>
         <h2>Choosing the fusion weights</h2>
