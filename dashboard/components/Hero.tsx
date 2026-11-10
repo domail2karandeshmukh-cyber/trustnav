@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { IconPlay } from "./Icons";
+import HeroScene from "./HeroScene";
 import { HERO, HERO_LANGS, HERO_NAMES, heroLang, type HeroLang } from "@/lib/i18n-hero";
 
 const KEY = "trustnav-intro-seen";
@@ -28,6 +29,7 @@ export default function Hero({ onStory, onConsole, onExplain }: { onStory: () =>
   const t = HERO[lang];
   return (
     <div className="hero" role="dialog" aria-label="Welcome" lang={lang}>
+      <HeroScene />
       <div className="hero-in">
         <div className="hero-top">
           <div className="hero-kicker">TrustNav</div>

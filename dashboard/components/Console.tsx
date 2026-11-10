@@ -3,8 +3,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import LiveView, { type LiveHandle } from "./LiveView";
 import ReplayView, { type ReplayHandle } from "./ReplayView";
-import ResultsView from "./ResultsView";
-import MethodView from "./MethodView";
 import CommandPalette, { type Command } from "./CommandPalette";
 import Tour, { resetTour } from "./Tour";
 import Hero, { resetHero } from "./Hero";
@@ -13,6 +11,8 @@ import dynamic from "next/dynamic";
 
 // the explainer carries ten languages of narration, so it loads only when asked for
 const Explainer = dynamic(() => import("./Explainer"), { ssr: false });
+const ResultsView = dynamic(() => import("./ResultsView"), { ssr: false });
+const MethodView = dynamic(() => import("./MethodView"), { ssr: false });
 import { ToastProvider } from "./Toasts";
 import { IconHelp, IconLive, IconMethod, IconMoon, IconReplay, IconResults, IconSearch, IconSun, Wordmark } from "./Icons";
 import type { ReplayData, RouteGeom } from "@/lib/types";

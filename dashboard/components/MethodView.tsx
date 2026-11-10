@@ -1,6 +1,7 @@
 "use client";
 
 import type { ReplayData } from "@/lib/types";
+import FusionLab from "./FusionLab";
 
 type Meta = Omit<ReplayData, "scenarios" | "routes">;
 
@@ -44,6 +45,8 @@ export default function MethodView({ meta }: { meta: Meta }) {
         <div><b>Trust score and evidence</b><span>Trusted from 75, degraded from 50, suspicious from 25. An incident opens after three seconds below 50</span></div>
         <div className="out"><b>Response</b><span>Below 50 the fix is refused: the position handed on is estimated from the odometer along the route, and the operator gets an action: continue, verify or isolate</span></div>
       </figure>
+
+      <FusionLab ruleWeight={meta.fusion_search.chosen.rule_weight} mlWeight={meta.fusion_search.chosen.ml_weight} />
 
       <div className="doc-cols">
         <div className="prose">

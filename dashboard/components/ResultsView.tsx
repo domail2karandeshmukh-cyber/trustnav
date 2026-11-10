@@ -46,6 +46,33 @@ export default function ResultsView({ meta, replay, onOpen }: { meta: Meta; repl
         </p>
       </header>
 
+      <section className="score" aria-label="Headline results">
+        <div className="score-tiles">
+          {([
+            [pct(hyb.precision), "precision", "alerts that were real attacks", "trusted"],
+            [pct(hyb.recall), "recall", "attacked seconds that raised an alert", "trusted"],
+            [pct(hyb.false_positive_rate, 2), "false alarms", "clean seconds wrongly flagged", "degraded"],
+            [`${caught} of ${attacks.length}`, "attacks caught", "every attack episode detected", "chart"],
+          ] as const).map(([v, l, d, tone]) => (
+            <div key={l} className="score-tile"><b style={{ color: `var(--${tone})` }}>{v}</b><span>{l}</span><small>{d}</small></div>
+          ))}
+        </div>
+        <div className="score-bars" role="img" aria-label={`Recall: rules ${pct(ex.rules.recall)}, model ${pct(ex.ml.recall)}, combined ${pct(hyb.recall)}. F1: rules ${fmt(ex.rules.f1, 3)}, model ${fmt(ex.ml.f1, 3)}, combined ${fmt(hyb.f1, 3)}.`}>
+          {([["Recall", "recall"], ["F1", "f1"], ["Precision", "precision"]] as const).map(([label, key]) => (
+            <div key={key} className="score-group">
+              <h3>{label}</h3>
+              {COLS.map(([k, name]) => (
+                <div key={k} className={`score-bar ${k}`}>
+                  <span>{name}</span>
+                  <i><em style={{ width: `${Math.max(1, ex[k][key] * 100)}%` }} /></i>
+                  <b>{key === "f1" ? fmt(ex[k][key], 3) : pct(ex[k][key])}</b>
+                </div>
+              ))}
+            </div>
+          ))}
+        </div>
+      </section>
+
       <section>
         <h2>Three ways to decide</h2>
         <div className="scroll-x">
