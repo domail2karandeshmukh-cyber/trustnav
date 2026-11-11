@@ -62,13 +62,14 @@ The extractor works one observation at a time, so it runs live exactly as it doe
 
 ## Step 3a: Rules (`rules.py`, thresholds in `config.py`)
 
-Fifteen deterministic checks. Each one compares a feature with a named threshold:
+Sixteen deterministic checks. Each one compares a feature with a named threshold:
 
-`R_POSITION_JUMP`, `R_IMPOSSIBLE_SPEED`, `R_ACCELERATION_SPIKE`, `R_HEADING_DISCONTINUITY`, `R_ROUTE_DEVIATION`, `R_SATELLITE_SHIFT`, `R_CN0_SHIFT`, `R_DOP_DEGRADATION`, `R_PSEUDORANGE_RESIDUAL`, `R_CLOCK_ANOMALY`, `R_SENSOR_GNSS_MISMATCH`, `R_JAMMING_INDICATOR`, `R_OSNMA_FAILED`, `R_OSNMA_LOST`, `R_FIX_LOST`.
+`R_POSITION_JUMP`, `R_IMPOSSIBLE_SPEED`, `R_ACCELERATION_SPIKE`, `R_HEADING_DISCONTINUITY`, `R_ROUTE_DEVIATION`, `R_SATELLITE_SHIFT`, `R_CN0_SHIFT`, `R_DOP_DEGRADATION`, `R_PSEUDORANGE_RESIDUAL`, `R_CLOCK_ANOMALY`, `R_SENSOR_GNSS_MISMATCH`, `R_JAMMING_INDICATOR`, `R_OSNMA_FAILED`, `R_OSNMA_LOST`, `R_FIX_LOST`, `R_TIME_JUMP`.
 
 - Each rule has a **weight** and a **severity**. Severity is 0.5 at the threshold and rises to 1.0 at three times the threshold, so a small exceedance counts less than a huge one.
 - The rules' contributions are combined with a **noisy-OR**: independent evidence reinforces itself (`risk = 1 − ∏(1 − contribution)`).
-- A **critical** rule (a jump over 4× the limit, or an OSNMA failure) sets a **floor of 70** on the risk, so a clear forgery can never be averaged away.
+- A **critical** rule (a jump over 4× the limit, an OSNMA failure, or a time jump) sets a **floor of 70** on the risk, so a clear forgery can never be averaged away.
+- `R_TIME_JUMP` was added in version 2.2, after a recording of a real spoofer showed what the other fifteen could not see (Step 9). Receiver time is treated as a measurement: it is compared with the clock of the host the receiver is plugged into (a phone, a gateway), against a slowly adapting baseline, and a difference of more than 5 s is critical. Without a host clock the rule still fires when receiver time runs backwards against its own one-per-second count. Elapsed time everywhere else (speeds, accelerations, dead reckoning) is counted on that trusted clock, never on the receiver's time alone, and the position-jump limit scales with the time since the last fix.
 - Thresholds sit where something becomes *physically impossible*, not where an attack becomes likely. That keeps false alarms low, at the cost of missing slow attacks. The model layer covers those.
 
 Output: a list of reasons, each with the measured value and threshold, plus a rule risk from 0 to 100.
@@ -164,7 +165,7 @@ Tables: `devices`, `runs`, `frames` (one row per scored second, including the `r
 |---|---|
 | **Live** | 3D map of the fleet, trust per vehicle, alert feed, device detail with reasons and the response (accepted / held / isolated), timeline dock, report export |
 | **Replay** | Ten recorded scenarios with a scrubber, the real path, the protected path the response layer handed on, and a narrated story mode |
-| **Results** | The evaluation numbers, per-scenario outcomes, and what the response layer prevented |
+| **Results** | The evaluation numbers, per-scenario outcomes, what the response layer prevented, and the two replays on real recordings (real attacks, a real drive with no attack) |
 | **Method** | How it works and its limitations |
 | **Space-time** | A 4D view: ground is the map, height is time, each track is a ribbon coloured by trust |
 
@@ -182,14 +183,21 @@ To avoid fooling ourselves, routes are split by role and never reused:
 
 The simulator is deterministic (seeded), so every result can be reproduced exactly.
 
+Two more commands leave the simulator and replay public recordings of real receivers through the same adapter and detector:
+
+- `realcheck.py`: a clean 27.6-minute drive of a u-blox ZED-F9K with a survey-grade reference. It measures false alarms on a real receiver (none from the rules), shows that the simulator-trained model must be re-calibrated on the receiver in use, and overlays software attacks on real noise.
+- `attackcheck.py`: recordings of **real jamming and spoofing** made in a car at Jammertest 2024 (VAARA dataset, University of Vaasa). A phone was captured by a spoofer for 26.5 minutes; the fifteen rules first published alerted after 21 min 49 s and refused 5 of 909 captured fixes. With `R_TIME_JUMP` the alert comes in the same second and all 909 are refused, with no alert in the clean periods. A u-blox driven past real jammers is alerted in 15 of 20 exposures by the re-calibrated hybrid and in 1 of 20 by the rules alone, because its NMEA stream carries no jamming indicator. The files are downloaded on demand (SHA-256 checked) and never stored in the repository.
+
 ## Run it yourself
 
 ```bash
 cd engine && python -m pip install -r requirements.txt
-python -m pytest -q                       # 32 tests
+python -m pytest -q                       # 42 tests
 python -m trustnav_engine.evaluate        # train + held-out metrics
 python -m trustnav_engine.stream --dry-run --speed 10
 python -m trustnav_engine.receiver --file drive.nmea --speed 0 --dry-run   # a saved receiver log
+python -m trustnav_engine.realcheck       # the clean real drive
+python -m trustnav_engine.attackcheck     # the recordings of real jamming and spoofing
 
 cd ../dashboard && npm install && npm run dev
 ```

@@ -10,8 +10,8 @@ IEEEtran format), in two languages:
 
 Both are exactly six pages and carry the same sections, tables and numbers.
 The French version is more condensed, because French runs about 15% longer
-than English for the same content; it quotes the console verdict in text
-instead of showing the screenshot.
+than English for the same content: its Table III omits the four count rows,
+and a few clauses of the English text are left out.
 
 ## Build
 
@@ -42,12 +42,13 @@ python3 paper/figures/make_figures.py
 
 | File | What it is |
 |---|---|
-| `figures/fig_timeline_{en,fr}.pdf` | trust and position error, second by second, for four held-out scenarios (Fig. 3) |
-| `figures/fig_sens_{en,fr}.pdf` | alert-line sweep, calibration per risk band, fusion-weight grid (Fig. 4; Fig. 3 in the French version) |
-| `figures/console-verdict-wide.png` | the console's verdict panel for the forged-Galileo-data scenario, captured at 2x from the deployed build (Fig. 2 of the English version; the French version quotes the verdict in text to stay within six pages); `console-verdict.png` and `console-replay.png` are the single-panel crop and the full screen it was cut from |
+| `figures/fig_timeline_{en,fr}.pdf` | trust and position error, second by second, for four held-out scenarios (Fig. 2) |
+| `figures/fig_sens_{en,fr}.pdf` | alert-line sweep, calibration per risk band, fusion-weight grid (Fig. 3) |
+| `figures/console-verdict-wide.png` | the console's verdict panel for the forged-Galileo-data scenario, captured at 2x from the deployed build; no longer placed in the paper (the English text quotes the verdict instead), to make room for the real-attack section; `console-verdict.png` and `console-replay.png` are the single-panel crop and the full screen it was cut from |
 | `figures/fig_map_{en,fr}.pdf`, `figures/fig_roc_{en,fr}.pdf` | map view of the response layer, and ROC / precision–recall curves; drawn but not placed in the paper for space (the AUCs are in Table III) |
 | `figures/analysis.json` | every quoted statistic, with the inputs it was computed from |
-| `figures/realcheck.json` | the real-receiver check of Section V-E (`python -m trustnav_engine.realcheck`, run from `engine/`): the public u-blox ZED-F9K drive recording replayed through the detector, the model re-calibrated on it, attacks overlaid; it also carries the drive as a polyline, which the site's Results page draws (a copy is in `dashboard/public/data/`) |
+| `figures/attackcheck.json` | the real-attack replay of Section V-F (`python -m trustnav_engine.attackcheck`, run from `engine/`): the VAARA recordings of Jammertest 2024 (a phone captured by a spoofer, a u-blox receiver under real jamming) replayed through the detector with the rules as first published, with the time rule, and with the re-calibrated model; the recordings are downloaded on demand and are not in the repository (a copy of the results is in `dashboard/public/data/`) |
+| `figures/realcheck.json` | the real-drive check of Section V-E (`python -m trustnav_engine.realcheck`, run from `engine/`): the public u-blox ZED-F9K drive recording replayed through the detector, the model re-calibrated on it, attacks overlaid; it also carries the drive as a polyline, which the site's Results page draws (a copy is in `dashboard/public/data/`) |
 | `figures/make_figures.py` | the script that draws the plots and writes `analysis.json` |
 
 Colours follow the Okabe–Ito palette, so every line stays distinguishable for
@@ -59,7 +60,8 @@ colour-blind readers and in greyscale; fonts are embedded (Liberation Serif).
   British spellings are expected).
 - Numbers: every numeric token in the French file is compared with the English
   one (decimal commas converted), and the English numbers are compared with
-  `figures/analysis.json` and `dashboard/public/data/meta.json`.
+  `figures/analysis.json`, `figures/realcheck.json`, `figures/attackcheck.json`
+  and `dashboard/public/data/meta.json`.
 - References: bibliography entries are in order of first citation (IEEE style)
   and every entry is cited; every URL was opened and the title, date and the
   facts attributed to it were checked against the page.

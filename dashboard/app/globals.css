@@ -802,3 +802,20 @@ kbd { padding: 1px 5px; border: 1px solid var(--line); border-bottom-width: 2px;
 .real-attack dt { color: var(--ink-2); } .real-attack dd { margin: 0; font-weight: 600; text-align: right; }
 .real-attack dd.ok { color: var(--trusted); }
 @media (max-width: 900px) { .real-grid, .real-attacks { grid-template-columns: minmax(0, 1fr); } .real-fact { grid-template-columns: 84px minmax(0, 1fr); } .real-fact > b { font-size: 34px; } }
+
+/* v12: real attack recordings */
+.atk-sub { font: 600 19px/1.25 var(--display); margin: 26px 0 0; }
+.atk-tick { font: 500 11.5px var(--display); fill: var(--ink-3); }
+.atk-lab { font: 600 13px var(--display); paint-order: stroke; stroke: var(--paper); stroke-width: 5px; stroke-linejoin: round; }
+.atk-lab.bad { fill: var(--untrusted); } .atk-lab.ok { fill: var(--trusted); }
+.atk-side { display: grid; gap: 14px; align-content: start; }
+.doc .atk-table { font-size: 14px; }
+.doc .atk-table th[scope=row] { font-weight: 500; color: var(--ink-2); }
+.doc .atk-table td { white-space: nowrap; font-weight: 600; }
+.doc .atk-table tr.hl th, .doc .atk-table tr.hl td { background: var(--hl); color: var(--ink); font-weight: 600; }
+.doc .atk-table tr.hl td { color: var(--trusted); }
+.atk-read { margin: 0 !important; font-size: 14.5px; line-height: 1.55; color: var(--ink-2); max-width: none !important; }
+.atk .real-attacks { margin-top: 12px; }
+.atk-fact { grid-template-columns: minmax(0, 1fr); gap: 8px; align-items: start; align-content: start; background: var(--surface); }
+.atk-fact > b { text-align: left; font-size: 38px; }
+.atk .note a { color: var(--chart); }

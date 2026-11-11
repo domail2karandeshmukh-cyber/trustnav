@@ -109,19 +109,71 @@ class FeatureExtractor:
         self.last_verified_t = None
         self.last_fix_t = None
         self.count = 0
+        # time: the receiver's UTC is a measurement like any other (a spoofer rewrites it), so elapsed time is
+        # counted on a clock the receiver cannot move: the host's when the adapter supplies one (host_t), else the
+        # receiver's own time as long as it runs forward
+        self.clock = None            # seconds on that clock at the previous observation
+        self.prev_t = None           # receiver UTC at the previous observation
+        self.prev_host = None
+        self.time_ref = None         # receiver minus host, while the two agree
+        self.time_floor = None       # without a host clock: the time the receiver cannot be behind
+        self.behind = False
+        self.time_tol_s = 5.0
 
     @property
     def window_full(self):
         return self.count > self.window
 
+    def _time(self, t, host, unknown=False):
+        """Advance the trusted clock and return (clock, time_jump_s, reference).
+
+        time_jump_s is how far the receiver's UTC sits from where it should be: against the host clock when there
+        is one, otherwise against its own once-a-second count, which can only show time running backwards (a gap
+        in a log also moves time forward, so a forward step proves nothing without a second clock)."""
+        tol = self.time_tol_s
+        if unknown:                                          # the receiver gave no time this second: nothing to check
+            self.clock = host if host is not None else (t if self.clock is None else self.clock + 1.0)
+            if host is not None:
+                self.prev_host = host
+            return self.clock, None, "none"
+        if host is not None:
+            off = t - host
+            if self.time_ref is None:
+                self.time_ref = off
+            elif self.prev_host is not None and self.prev_t is not None:
+                d_host, d_t = host - self.prev_host, t - self.prev_t
+                if not (-tol <= d_host <= 3600.0) and 0.0 <= d_t <= 3600.0:
+                    self.time_ref = off                      # the host clock was stepped (NTP at boot), not the receiver's
+            dev = off - self.time_ref
+            if abs(dev) <= tol:
+                self.time_ref += 0.05 * dev                  # follow slow drift between two honest clocks
+            self.prev_host, self.prev_t = host, t
+            self.clock = host
+            return host, dev, "host"
+        if self.clock is None:
+            self.clock, self.time_floor, dev = t, t, 0.0
+        else:
+            step = t - self.prev_t
+            # where the receiver's time must at least be: the floor ticks on with the receiver, a second at most
+            floor = self.time_floor + min(1.0, max(0.0, step))
+            if t >= floor - tol:                             # at or ahead of it: consistent (a gap only moves time forward)
+                self.clock += 1.0 if self.behind else max(0.0, step)
+                self.time_floor, self.behind, dev = t, False, 0.0
+            else:                                            # behind its own count: the receiver's time ran backwards
+                self.clock += 1.0
+                self.time_floor, self.behind, dev = floor, True, t - floor
+        self.prev_t = t
+        return self.clock, dev, "count"
+
     def update(self, o):
-        t = _parse_t(o["t"])
+        t_rx = _parse_t(o["t"]) + (o.get("t_frac") or 0.0)
+        t, time_jump, time_reference = self._time(t_rx, o.get("host_t"), bool(o.get("time_unknown")))
         has_fix = o.get("lat") is not None and o.get("lon") is not None
         f = dict.fromkeys(FEATURE_NAMES)
 
         # --- motion ---
         if has_fix and self.prev_fix is not None:
-            dt = max(1e-3, t - self.prev_fix["_t"])
+            dt = max(1e-3, t - self.prev_fix["_t"])     # on the trusted clock, never on the receiver's own time
             dist = haversine_m(self.prev_fix["lat"], self.prev_fix["lon"], o["lat"], o["lon"])
             dspeed = dist / dt
             f["delta_t_s"] = dt
@@ -236,5 +288,8 @@ class FeatureExtractor:
             "osnma": status,
             "seconds_since_verified": None if self.last_verified_t is None else t - self.last_verified_t,
             "window_full": self.window_full,
+            "time_jump_s": time_jump,
+            "time_reference": time_reference,
+            "clock": t,
         }
         return f, context

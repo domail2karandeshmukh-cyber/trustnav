@@ -1,6 +1,6 @@
 # Safety, legal and ethics
 
-**Nothing is transmitted.** Every jamming, spoofing and forgery attack in this project exists only as software: the simulator produces the observations a receiver would report, and the recorded scenarios replay them. Transmitting on the GNSS bands is illegal in France (the ANFR investigates interference cases and the law provides for up to six months' imprisonment and a 30,000 EUR fine), and a jammer in a car affects everyone around it, as the Nantes and Lyon airport cases showed. Real attack testing will use public recordings (Jammertest, TEXBAT) or a shielded laboratory with a licence, never the open air.
+**Nothing is transmitted.** Every jamming, spoofing and forgery attack we made exists only as software: the simulator produces the observations a receiver would report, and the recorded scenarios replay them. The real attacks the detector has been replayed on were transmitted at Jammertest 2024 in Norway by the organisers, with the authorities' permission, and recorded by the University of Vaasa; we only read the logs they published. Transmitting on the GNSS bands is illegal in France (the ANFR investigates interference cases and the law provides for up to six months' imprisonment and a 30,000 EUR fine), and a jammer in a car affects everyone around it, as the Nantes and Lyon airport cases showed. Real attack testing uses public recordings (Jammertest 2024 so far; the raw captures of Jammertest 2023 and TEXBAT next), never the open air.
 
 **The receiver only listens.** The Phase 2 hardware is a receive-only GNSS antenna and receiver, which needs no licence and emits nothing.
 
@@ -8,6 +8,6 @@
 
 **Security of the system itself.** Secrets are never in the repository; the ingest token is stored only as a SHA-256 hash and the presenter passcode as a bcrypt hash with rate limiting; row-level security limits the browser to reading. The response layer is designed so that a spoofer cannot end a hold simply by looking clean (the returning fix must rejoin the estimate).
 
-**Honest claims.** The trust score is a research indicator, not a certified integrity figure, and the reported numbers come from one simulator. TrustNav is not for aviation, maritime or other safety-critical use. Its limits are listed in the Method page of the console and in the Results section.
+**Honest claims.** The trust score is a research indicator, not a certified integrity figure. The detection table comes from one simulator; the real attacks are two days of one campaign on two devices, and we publish that the first version missed the real spoofing. TrustNav is not for aviation, maritime or other safety-critical use. Its limits are listed in the Method page of the console and in the Results section.
 
-**Open data and attribution.** Map data © OpenStreetMap contributors, basemaps © CARTO, road routes computed with OSRM. Sources for the market comparison are cited in that section.
+**Open data and attribution.** Map data © OpenStreetMap contributors, basemaps © CARTO, road routes computed with OSRM. Real drive: Google gps-measurement-tools (Apache-2.0). Real attacks: VAARA dataset, University of Vaasa (Jammertest 2024); its repository states no licence, so its files are downloaded on demand and never redistributed here. Sources for the market comparison are cited in that section.

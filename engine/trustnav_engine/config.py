@@ -57,6 +57,8 @@ class RuleSettings:
     osnma_lost_memory_s: float = 120.0
     fix_lost_after_s: float = 3.0
     fix_lost_weight: float = 25.0
+    time_jump_s: float = 5.0              # receiver UTC against the host clock, or running backwards (critical)
+    time_jump_weight: float = 40.0
     critical_jump_factor: float = 4.0
     critical_risk_floor: float = 70.0
 
@@ -100,7 +102,7 @@ class SafeguardSettings:
 
 @dataclass(frozen=True)
 class Settings:
-    version: str = "2.1.0"
+    version: str = "2.2.0"
     rules: RuleSettings = field(default_factory=RuleSettings)
     safeguard: SafeguardSettings = field(default_factory=SafeguardSettings)
     fusion: FusionSettings = field(default_factory=FusionSettings)

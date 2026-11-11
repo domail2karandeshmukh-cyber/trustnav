@@ -61,12 +61,19 @@ class Safeguard:
         self.travelled_m = 0.0  # distance dead reckoned since the hold began
         self.clean = 0
         self.prev_seq = None
+        self.prev_clock = None
 
     # ---- public -------------------------------------------------------------------------------
 
-    def update(self, frame, obs):
-        """Return the response dict for one scored frame."""
-        dt = 1.0 if self.prev_seq is None else max(0.0, float(frame["s"] - self.prev_seq))
+    def update(self, frame, obs, clock=None):
+        """Return the response dict for one scored frame. `clock` is the detector's trusted clock in seconds
+        (the host's, or the receiver's while it runs forward): the time dead reckoning is stepped on, so a
+        receiver that skips seconds, or one whose time is being rewritten, does not shorten the distance."""
+        if clock is None:
+            dt = 1.0 if self.prev_seq is None else max(0.0, float(frame["s"] - self.prev_seq))
+        else:
+            dt = 1.0 if self.prev_clock is None else max(0.0, float(clock - self.prev_clock))
+            self.prev_clock = clock
         self.prev_seq = frame["s"]
         has_fix = bool(frame["fix"]) and frame["lat"] is not None and frame["lon"] is not None
         critical = any(r["severity"] == "CRITICAL" for r in frame["why"])

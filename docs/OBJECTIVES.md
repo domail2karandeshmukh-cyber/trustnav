@@ -46,7 +46,7 @@ TrustNav does not replace the receiver. It sits next to it and acts as a second 
 3. **Few false alarms.** An operator who is alerted constantly stops listening. Normal data in our tests produces a false alarm rate of 0.44%.
 4. **Responds, not only reports.** A fix the engine does not believe is refused; the position handed to dispatch, geofencing or flight control is estimated from the odometer along the route, and the operator gets an action: continue, verify or isolate.
 5. **Same code for demo and real life.** The demo runs through the exact detector a real receiver would use, and the receiver adapter already speaks NMEA and u-blox UBX.
-6. **Safe.** All attacks are simulated in software. No radio signal is ever transmitted.
+6. **Safe.** Our own attacks are simulated in software; the real ones are recordings made by others. No radio signal is ever transmitted.
 
 ## Measured results (held-out routes, synthetic data)
 
@@ -57,21 +57,24 @@ TrustNav does not replace the receiver. It sits next to it and acts as a second 
 | F1 | 0.437 | 0.939 | **0.977** |
 | False alarm rate | 0% | 1.33% | **0.44%** |
 
-7 of 7 attack types are caught. The numbers are an upper bound, because one simulator produces every data split. Real-world data is the next step.
+7 of 7 attack types are caught. The numbers are an upper bound, because one simulator produces every data split.
+
+**On real recordings.** A clean 27.6-minute drive of a real u-blox receiver: no false alarm from the rules; the model has to be re-calibrated on the receiver. Recordings of **real attacks** (Jammertest 2024, Norway): a phone captured by a spoofer for 26.5 minutes ended 10.2 km from the truth. The version first published alerted after 21 min 49 s and refused 5 of 909 captured fixes; with a sixteenth rule that checks the receiver's time against the clock of the device it is plugged into, the alert comes in the same second and all 909 are refused, with no false alert in the clean periods. Real jamming of a u-blox receiver is alerted in 15 of 20 exposures.
 
 **What the response layer prevents** (same held-out attacks, error against ground truth): the worst position an ordinary fleet screen would show is **8.0 km** off (teleport spoof); what TrustNav hands on is never more than **29 m** off. During the jamming outage an ordinary screen is blank for **100 s**; TrustNav keeps an estimated position the whole time, within 2 m.
 
 ## Limits (honest)
 
-- Data is **simulated**, not yet from a real receiver.
-- The detector learned from one simulator, so results on real receivers will differ.
+- The detection table is **simulated**. The real recordings replayed so far (one clean drive, two days of real jamming and spoofing) are evidence, not yet a statistic.
+- The model learned from one simulator, so it must be re-calibrated on each real receiver; this was needed, and done, on both real recordings.
+- The time rule needs a second clock (the phone's or the gateway's), or a spoofer that moves time backwards.
 - It detects, explains and refuses bad fixes. It cannot remove a jammer or a spoofer from the air; only antenna hardware does that.
 - Its estimate during a hold drifts with the odometer (about 3 % of the distance), so long holds need the operator to verify by other means.
 
 ## Next steps (Phase 2)
 
 1. Connect a **real GNSS receiver and antenna** (receive-only) through the existing ingest endpoint.
-2. Replay **recorded attack data** (for example the Jammertest recordings) through the same pipeline.
+2. Run the **raw radio recordings** of attacks (Jammertest 2023, TEXBAT) through a software receiver; the receiver-level recordings of Jammertest 2024 are already replayed.
 3. Add a **second antenna** or an **inertial sensor** so two independent sources can be compared.
 4. Add alerts by email or SMS, and a drone test with a PX4 flight controller.
 5. Retrain and re-measure on real data, and report the difference honestly.

@@ -263,6 +263,6 @@ class Detector:
             "why": [r.to_dict() for r in reasons[:5]],
         }
         # response layer: the position downstream systems should use, and what to do
-        frame["resp"] = self.safeguard.update(frame, o)
+        frame["resp"] = self.safeguard.update(frame, o, ctx["clock"])
         events = self.incidents.update(frame)
         return frame, events

@@ -48,11 +48,13 @@ def evaluate(f, ctx, profile: Profile, rs: RuleSettings):
         sev = "CRITICAL" if critical else _label(s)
         reasons.append(Reason(code, title, sev, weight * s, detail))
 
+    # the limit is per second: after a gap (a tunnel, a receiver that skipped seconds) the fix may have moved further
     v = f.get("distance_m")
-    if v is not None and v > profile.max_position_jump_m:
-        crit = v >= rs.critical_jump_factor * profile.max_position_jump_m
-        fire("R_POSITION_JUMP", "Position jump", v, profile.max_position_jump_m, rs.position_jump_weight,
-             f"Fix moved {v:,.0f} m in {f['delta_t_s']:.0f} s (limit {profile.max_position_jump_m:.0f} m).", crit)
+    limit = profile.max_position_jump_m * max(1.0, f.get("delta_t_s") or 1.0)
+    if v is not None and v > limit:
+        crit = v >= rs.critical_jump_factor * limit
+        fire("R_POSITION_JUMP", "Position jump", v, limit, rs.position_jump_weight,
+             f"Fix moved {v:,.0f} m in {f['delta_t_s']:.0f} s (limit {limit:.0f} m).", crit)
 
     v = f.get("derived_speed_mps")
     if v is not None and v > profile.max_speed_mps:
@@ -122,6 +124,13 @@ def evaluate(f, ctx, profile: Profile, rs: RuleSettings):
         tail = "while the receiver still reports a fix" if ctx.get("has_fix") else "and the fix is gone too"
         reasons.append(Reason("R_OSNMA_LOST", "Galileo authentication lost", "MEDIUM", rs.osnma_lost_weight,
                               f"Authenticated Galileo data stopped {since:.0f} s ago {tail}."))
+
+    v = ctx.get("time_jump_s")
+    if v is not None and abs(v) > rs.time_jump_s:
+        against = "the host clock" if ctx.get("time_reference") == "host" else "its own one-per-second count"
+        fire("R_TIME_JUMP", "Receiver time jumped", v, rs.time_jump_s, rs.time_jump_weight,
+             f"Receiver time moved {abs(v):,.0f} s {'back' if v < 0 else 'forward'} against {against} "
+             f"(limit {rs.time_jump_s:.0f} s): satellite time is being rewritten.", True)
 
     wf = ctx.get("seconds_without_fix") or 0.0
     if not ctx.get("has_fix") and wf >= rs.fix_lost_after_s:

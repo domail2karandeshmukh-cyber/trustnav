@@ -117,3 +117,23 @@ def test_rules_only_mode_has_no_model_risk():
     data += epoch("101531.00", "4728.2400", "00033.1100", 9, [41, 44, 39, 42, 45, 40, 38, 43, 41], 1.8, "21.6", "87.0")
     frames = [det.process(o)[0] for o in observations([data])]
     assert all(f["mr"] is None and f["trust"] == 100.0 for f in frames)
+
+
+def test_sentence_glued_to_a_binary_frame_is_still_read():
+    # a u-blox sends binary and text on one port: the first sentence of a second follows a binary frame with no
+    # line break between them (found on a real log: every RMC was lost, and with it the date)
+    raw = ubx(0x02, 0x15, b"\x00" * 16) + nmea("GNRMC,075705.00,A,6912.74122,N,01551.51408,E,0.010,,110924,,,D,V").encode()
+    raw += nmea("GNGGA,075705.00,6912.74122,N,01551.51408,E,2,12,0.53,8.1,M,34.4,M,,0123").encode()
+    raw += ubx(0x02, 0x15, b"\x24" * 16) + nmea("GNRMC,075706.50,A,6912.74122,N,01551.51408,E,0.010,,110924,,,D,V").encode()
+    out = list(observations([raw]))
+    assert [o["t"] for o in out] == ["2024-09-11T07:57:05Z", "2024-09-11T07:57:06Z"]
+    assert out[0]["sats"] == 12 and out[1]["t_frac"] == 0.5 and not out[0]["time_unknown"]
+
+
+def test_satellite_count_is_unknown_when_the_sentence_that_carries_it_is_dropped():
+    # an overloaded receiver drops GGA now and then; the count must not fall back to the number of signals seen
+    lines = nmea("GNRMC,101400.00,A,6916.20329,N,01557.54658,E,0.005,,100924,,,D,V")
+    lines += nmea("GPGSV,2,1,08,03,56,130,46,04,55,185,42,06,49,282,48,09,27,216,44,1")
+    lines += nmea("GPGSV,2,2,08,11,15,315,35,12,12,327,34,17,13,236,41,19,25,254,41,1")
+    o = list(observations([lines.encode()]))[0]
+    assert o["sats"] is None and o["cn0_mean_dbhz"] is not None

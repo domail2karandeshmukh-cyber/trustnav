@@ -67,10 +67,10 @@ export default function RealCheck() {
   const metres = (m: number) => (m < 10 ? `${m.toFixed(1)} m` : dist(m));
   return (
     <section className="real" aria-labelledby="real-h">
-      <h2 id="real-h">On a real receiver</h2>
+      <h2 id="real-h">On a real drive with no attack</h2>
       <p>
-        Every number above comes from one simulator. So the same adapter and detector were replayed on a public recording of a real drive: a u-blox ZED-F9K
-        receiver on a {d.duration_min}-minute loop in Mountain View, with a survey-grade reference track of the same drive.
+        A second public recording, this one with no attack in it: a u-blox ZED-F9K receiver on a {d.duration_min}-minute loop in Mountain View, with a
+        survey-grade reference track of the same drive. It measures false alarms on a real receiver, and what software attacks overlaid on real noise look like.
       </p>
       <div className="real-grid">
         <figure className="real-map">

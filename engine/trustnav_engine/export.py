@@ -71,6 +71,7 @@ def build():
             "One observation is one evaluation unit. A long attack contributes many correlated rows, so per-observation scores are not per-attack accuracy.",
             "OSNMA status is simulated. A relay (meaconing) attack can pass OSNMA, which the stealth drift scenario shows.",
             "On a public 27.6-minute u-blox ZED-F9K drive recording (python -m trustnav_engine.realcheck) the rules raise no false alarm, but the model trained on the simulator alerts on 89 % of the seconds: it must be re-calibrated on the receiver actually used. Re-calibrated on the first 19 minutes of that drive it raises no alert in the remaining 8.5 minutes and catches overlaid teleport, drift and jamming in 0, 35 and 1 s.",
+            "On recordings of real attacks (Jammertest 2024, python -m trustnav_engine.attackcheck) the fifteen rules first published missed a phone captured by a spoofer for 22 minutes: its stream was physically consistent and only its clock had been set back. The sixteenth rule, receiver time against the host clock, refuses every captured fix from the first second. Real jamming is seen by the re-calibrated model and not by the rules when the receiver sends no jamming indicator, and a lost fix alone is held, not called an attack.",
         ],
     }
 

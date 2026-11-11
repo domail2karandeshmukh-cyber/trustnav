@@ -6,7 +6,7 @@ import FusionLab from "./FusionLab";
 type Meta = Omit<ReplayData, "scenarios" | "routes">;
 
 const RULES: [string, string, string][] = [
-  ["Position jump", "Step over 250 m between fixes (critical at 1 km)", "position_jump_weight"],
+  ["Position jump", "Step over 250 m per second between fixes (critical at four times that)", "position_jump_weight"],
   ["Impossible speed", "Faster than the platform can move", "impossible_speed_weight"],
   ["Acceleration spike", "Above the platform's maximum acceleration", "acceleration_spike_weight"],
   ["Heading discontinuity", "Turns faster than the platform can, while moving", "heading_discontinuity_weight"],
@@ -21,6 +21,7 @@ const RULES: [string, string, string][] = [
   ["Galileo authentication failed", "OSNMA signature check fails (critical)", "osnma_failed_weight"],
   ["Galileo authentication lost", "Verified Galileo data disappears", "osnma_lost_weight"],
   ["Position fix lost", "No solution for three seconds", "fix_lost_weight"],
+  ["Receiver time jump", "Receiver time moves more than 5 s against the host clock, or runs backwards (critical)", "time_jump_weight"],
 ];
 
 const ROLE: Record<string, string> = { train: "Training", validation: "Validation", heldout: "Held out" };

@@ -4,6 +4,7 @@ import type { ReplayData } from "@/lib/types";
 import { dist, fmt, pct, span } from "@/lib/format";
 import { TrustTape } from "./Instruments";
 import RealCheck from "./RealCheck";
+import AttackCheck from "./AttackCheck";
 
 type Meta = Omit<ReplayData, "scenarios" | "routes"> & { scenarios: Omit<ReplayData["scenarios"][number], "frames">[] };
 
@@ -43,7 +44,8 @@ export default function ResultsView({ meta, replay, onOpen }: { meta: Meta; repl
         <p className="doc-lede">
           The combined score caught {caught} of {attacks.length} attacks and raised {normalFalse === 0 ? "no alert" : `${normalFalse} alerts`} on
           the {normals.length} normal runs. Every number below comes from {meta.scenarios.length} recorded scenarios
-          ({total.toLocaleString("en-GB")} one-second observations) on routes the model never saw during training.
+          ({total.toLocaleString("en-GB")} one-second observations) on routes the model never saw during training. Further down, the same detector is
+          replayed on recordings of real attacks and of a real drive.
         </p>
       </header>
 
@@ -171,6 +173,8 @@ export default function ResultsView({ meta, replay, onOpen }: { meta: Meta; repl
           </p>
         </section>
       )}
+
+      <AttackCheck />
 
       <RealCheck />
 

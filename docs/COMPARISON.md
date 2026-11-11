@@ -70,11 +70,11 @@ Recent papers use machine learning on receiver observables (C/N0, pseudorange re
 | Responds | no | alerts | yes (RF) | report | flag | no | **refuses the fix, estimates, recommends action** |
 | Extra hardware | none | probe + 1 to 3 antennas | 2+ antennas | none | OSNMA-capable receiver | none | **none** |
 | Fleet view | no | network of sites | no | yes | no | yes | **yes** |
-| Status | shipping | shipping | shipping | shipping | operational | live | **prototype, simulated data** |
+| Status | shipping | shipping | shipping | shipping | operational | live | **prototype; simulated data and replays of real recordings** |
 
 ## What TrustNav does not do (yet)
 
-- It has not been tested on **real receiver data**. The numbers in this repository come from one simulator; the products above have been tested at Jammertest. Phase 2 (see `ROADMAP.md`) is exactly that test.
+- It has not been tested **live on its own receiver**. The detection table comes from one simulator. It has been replayed on public recordings: a clean real drive, and real jamming and spoofing from Jammertest 2024 (two devices, two days), where the first version missed a spoofed phone until receiver time was checked against the host clock. The products above are tested at Jammertest every year, on many receivers. Phase 2 (see `ROADMAP.md`) is the live test.
 - It cannot **remove** a jammer or a spoofer from the air. Only antenna hardware mitigates at RF level.
 - It does not do **signal-level** analysis (spectrum, correlator shapes, antenna arrays). It works at the level of what a receiver reports, so a very careful spoofer that keeps every observable consistent and follows the road is hard to catch; the model layer and the odometer comparison are the defence, and a second antenna would be the next step.
 - Its OSNMA status is **simulated**; a real implementation needs raw Galileo pages and an OSNMA library.
@@ -91,5 +91,5 @@ Recent papers use machine learning on receiver observables (C/N0, pseudorange re
 - Geotab: https://www.geotab.com/blog/combating-gps-jammers/ ; Navixy: https://navixy.com/docs/user/guide/events-and-notifications/device-positioning/gps-jamming
 - Aviation maps: https://gpsjam.org/faq/ , https://www.flightradar24.com/data/gps-jamming , OpsGroup report (https://ops.group/blog/gps-spoofing-final-report/).
 - Papers: Tang and Qin, APSIPA ASC 2025; Kriezis et al., ION ITM 2025 (https://web.stanford.edu/group/scpnt/gpslab/pubs/papers/Kreizis_ION_ITM_2025_Real_World_Spoofing_Detection.pdf); Li et al., IEEE Access 2025, doi 10.1109/ACCESS.2025.3553475; Iqbal, Aman, Sikdar (https://www.ece.nus.edu.sg/stfpage/bsikdar/papers/ccnc_25b.pdf); Bhuiyan et al., GPS Solutions 2026 (https://doi.org/10.1007/s10291-026-02102-z).
-- Datasets: TEXBAT (https://radionavlab.ae.utexas.edu/texbat), Jammertest plan (https://github.com/NPRA/jammertest-plan), FGI Jammertest 2023 recordings (https://etsin.fairdata.fi/dataset/2eee8cfd-db00-4e46-bd62-d7632c09c700).
+- Datasets: TEXBAT (https://radionavlab.ae.utexas.edu/texbat), Jammertest plan (https://github.com/NPRA/jammertest-plan), FGI Jammertest 2023 recordings (https://etsin.fairdata.fi/dataset/2eee8cfd-db00-4e46-bd62-d7632c09c700), VAARA, University of Vaasa, Jammertest 2024 (https://github.com/UniVaasaDigiEco/VAARA), Google gps-measurement-tools (https://github.com/google/gps-measurement-tools).
 - Incidents: Inside GNSS on the Newark GBAS case; ANFR interference guide 2024 (https://anfr.fr/fileadmin/mediatheque/documents/brouillage/ANFR-DGITM_-_Guide_Brouillage_VD_-_2024.pdf); trans.info on the Lyon airport case; EU Council note ST-9188-2025 on Baltic interference.

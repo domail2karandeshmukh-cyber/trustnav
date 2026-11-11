@@ -16,3 +16,6 @@ node_modules/
 dashboard/next-env.d.ts
 *.tsbuildinfo
 engine/out/
+
+# public dataset files downloaded by trustnav_engine.attackcheck
+engine/trustnav_engine/data/vaara/

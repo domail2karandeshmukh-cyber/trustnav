@@ -217,6 +217,8 @@ class EpochBuilder:
         self.seq = 0
         self.cur = {}
         self.seen = set()
+        self.date = None          # last date seen in an RMC sentence (ddmmyy), carried over seconds without one
+        self.last_t = None        # last timestamp emitted
 
     def feed(self, kind, d):
         """Return a finished observation when a new second begins, else None."""
@@ -240,22 +242,36 @@ class EpochBuilder:
         has_fix = c.get("fix", True) and c.get("quality", 1) > 0 and c.get("valid", True) and c.get("lat") is not None
         snr = [s for s in (c.get("cno") or c.get("snr") or []) if s > 0]
         t = c.get("t")
+        time_unknown = False
         if t is None:
-            tm = (c.get("time") or "000000")[:6].ljust(6, "0")
+            raw = c.get("time") or ""
             dt = c.get("date")
             if dt and len(dt) == 6:
-                t = f"20{dt[4:6]}-{dt[2:4]}-{dt[0:2]}T{tm[0:2]}:{tm[2:4]}:{tm[4:6]}Z"
+                self.date = dt
+            dt = self.date
+            if len(raw) >= 6 and raw[:6].isdigit():
+                tm = raw[:6]
+                day = f"20{dt[4:6]}-{dt[2:4]}-{dt[0:2]}" if dt else datetime.now(timezone.utc).strftime("%Y-%m-%d")
+                t = f"{day}T{tm[0:2]}:{tm[2:4]}:{tm[4:6]}Z"
             else:
-                today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
-                t = f"{today}T{tm[0:2]}:{tm[2:4]}:{tm[4:6]}Z"
+                # a receiver without a fix may send no time at all: count on from the last second it gave
+                time_unknown = True
+                last = datetime.strptime(self.last_t, "%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=timezone.utc) if self.last_t else datetime.now(timezone.utc)
+                t = datetime.fromtimestamp(last.timestamp() + 1, timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+        self.last_t = t
+        frac = (c.get("time") or "")[6:]
         o = {
             "seq": self.seq,
             "t": t,
+            "t_frac": float("0" + frac) if frac.startswith(".") and frac[1:].isdigit() else 0.0,
+            "time_unknown": time_unknown,
             "lat": c.get("lat") if has_fix else None,
             "lon": c.get("lon") if has_fix else None,
             "speed_mps": c.get("speed_mps") if has_fix else None,
             "heading_deg": c.get("heading_deg") if has_fix else None,
-            "sats": c.get("sats", len(snr) if snr else 0),
+            # satellites used come from GGA or NAV-PVT only: when an overloaded receiver drops that sentence the count
+            # is unknown, not the number of signals with a C/N0 (which would make it jump from 12 to 30 and back)
+            "sats": c["sats"] if "sats" in c else (None if snr else 0),
             "cn0_mean_dbhz": round(statistics.fmean(snr), 2) if snr else None,
             "cn0_std_dbhz": round(statistics.pstdev(snr), 2) if len(snr) > 1 else None,
             "pdop": c.get("pdop") if has_fix else None,
@@ -319,12 +335,18 @@ def observations(byte_source):
                 s = line.decode("ascii", "ignore").strip()
             except Exception:
                 continue
-            if s.startswith("$"):
-                r = parse_nmea(s)
-                if r:
-                    o = eb.feed(*r)
-                    if o:
-                        yield o
+            if not s.startswith("$"):
+                # the first sentence after a binary frame arrives glued to it on the same line;
+                # the checksum decides whether what follows the last "$" really is a sentence
+                k = s.rfind("$")
+                if k < 0:
+                    continue
+                s = s[k:]
+            r = parse_nmea(s)
+            if r:
+                o = eb.feed(*r)
+                if o:
+                    yield o
     o = eb.finish()
     if o:
         yield o

@@ -10,10 +10,11 @@ The tutor's questions: *can it be improved more?* and *does it prevent attacks o
 |---|---|---|---|
 | 0 | **Use a phone as the receiver** (done, v10). The `/phone` page sends the phone's fixes; `python -m trustnav_engine.phone` scores them live; the page can overlay a teleport, a drift or jamming on the real stream. | Real GNSS data through the whole chain today, for free; the overlay shows detection and the response on real data without transmitting anything. The phone has no per-satellite C/N0, clock or OSNMA, so the physics and route rules carry the demo. | done |
 | 0b | **Replay a public real-receiver recording** (`python -m trustnav_engine.realcheck`, done): a 27.6-minute u-blox ZED-F9K drive with a SPAN reference. Rules: no false alarm; simulator model: re-calibration needed and demonstrated; overlaid attacks caught in 0, 35 and 1 s. Found and fixed two engine weaknesses (tail-score saturation, unbounded long-clean release). | Real receiver noise and real normal driving without buying anything yet. | done |
+| 0c | **Replay public recordings of real attacks** (`python -m trustnav_engine.attackcheck`, done, engine 2.2): Jammertest 2024, a phone captured by a real spoofer and a u-blox receiver under real jamming. The first version missed the capture for 21 min 49 s; a sixteenth rule on receiver time now refuses it in the same second. Four more weaknesses found and fixed. | Real attacks at the receiver level, recorded legally by others. Two days of one campaign: evidence, not a statistic. | done |
 | 1 | **Plug in a real receiver.** A u-blox USB receiver on the laptop, `python -m trustnav_engine.receiver --port ... --no-model`. The adapter already exists and is tested on synthetic NMEA/UBX. | First real data. Shows the whole chain live: antenna, engine, cloud, dashboard. | 1 hour once the device arrives |
 | 2 | **Record normal drives** with `--jsonl` (walk, tram, car around Angers). | The model's idea of "normal" comes from the simulator. The Stanford study (Kriezis et al., 2025) found thresholds tuned on one receiver failed on another. Real normal data is the only cure. | 2 to 3 hours of recording |
 | 3 | **Re-calibrate** the rules' thresholds and retrain the model on those recordings (`calibrate` script, to write). Report the before/after false alarm rate. | Turns the research prototype into something that is honest about a real device. | 1 day |
-| 4 | **Replay recorded attacks** through the same pipeline: the FGI Jammertest 2023 recordings (CC BY 4.0) and TEXBAT (research use) are raw RF, so they need a software receiver (GNSS-SDR) or a receiver fed by an SDR replay to produce observables; the Mendeley receiver-observable dataset can be used directly. | Real attack detection numbers, without transmitting anything. | 2 to 4 days |
+| 4 | **Replay raw radio recordings of attacks** through the same pipeline: the FGI Jammertest 2023 recordings (CC BY 4.0) and TEXBAT (research use) are raw RF, so they need a software receiver (GNSS-SDR) or a receiver fed by an SDR replay to produce observables; the Mendeley receiver-observable dataset can be used directly. | More attack types and more receivers than the two devices replayed so far, still without transmitting anything. | 2 to 4 days |
 
 ## Phase 3: stronger evidence
 
@@ -43,5 +44,5 @@ The tutor's questions: *can it be improved more?* and *does it prevent attacks o
 
 ## Not planned
 
-- Transmitting any jamming or spoofing signal, even in a lab, without a shielded chamber and a licence. All attack testing uses recordings and simulation.
+- Transmitting any jamming or spoofing signal, even in a lab, without a shielded chamber and a licence. All attack testing uses simulation and recordings made by others.
 - Safety-critical use (aviation, maritime). The trust score is a research indicator, not a certified integrity figure.

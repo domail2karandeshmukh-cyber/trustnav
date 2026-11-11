@@ -18,6 +18,8 @@ HERE = Path(__file__).resolve().parent
 ROOT = HERE.parent
 FONTS = ROOT / "dashboard" / "node_modules" / "@fontsource" / "barlow" / "files"
 META = json.loads((ROOT / "dashboard" / "public" / "data" / "meta.json").read_text())
+REAL = json.loads((ROOT / "dashboard" / "public" / "data" / "realcheck.json").read_text())
+ATTACK = json.loads((ROOT / "dashboard" / "public" / "data" / "attackcheck.json").read_text())
 
 SECTIONS = [  # (number, title, source markdown, anchor)
     ("1", "Summary", "SUMMARY.md"),
@@ -52,8 +54,8 @@ def md(text: str) -> str:
 
 # Sections that the standalone markdown files need but the single document already has elsewhere.
 TRIM = {
-    "OBJECTIVES.md": [("## Measured results (held-out routes, synthetic data)", "## Measured results\n\nPrecision 99.3 %, recall 96.1 %, false alarm rate 0.44 %, 7 of 7 attack types caught; the response layer cuts the worst operator-visible error from 8.0 km to 29 m. The full tables, scenario by scenario, are in section 6.\n"),
-                      ("## Next steps (Phase 2)", "## Next steps\n\nA real receiver and antenna, calibration on real normal drives, replay of public attack recordings, a second antenna, real OSNMA: the plan with effort and priorities is in section 8.\n")],
+    "OBJECTIVES.md": [("## Measured results (held-out routes, synthetic data)", "## Measured results\n\nPrecision 99.3 %, recall 96.1 %, false alarm rate 0.44 %, 7 of 7 attack types caught; the response layer cuts the worst operator-visible error from 8.0 km to 29 m. The full tables, scenario by scenario, and the replays on real recordings are in section 6.\n"),
+                      ("## Next steps (Phase 2)", "## Next steps\n\nA real receiver and antenna, calibration on real normal drives, raw radio recordings of attacks through a software receiver, a second antenna, real OSNMA: the plan with effort and priorities is in section 8.\n")],
     "HOW_IT_WORKS.md": [("## Run it yourself", "")],
 }
 
@@ -110,6 +112,57 @@ The live console is the part a jury member sees first, so this section says what
 """) + figures
 
 
+def _span(seconds: int) -> str:
+    m, s_ = divmod(int(seconds), 60)
+    return f"{m} min {s_} s" if m and s_ else f"{m} min" if m else f"{s_} s"
+
+
+def real_section(brief: bool = False) -> str:
+    """The two replays on real recordings, written from the result files the engine exports."""
+    ph = ATTACK["phone"]; cap = ph["capture"]
+    cfg = {c["key"]: c for c in ph["configurations"]}
+    jam = ATTACK["ublox_jamming"]; spo = ATTACK["ublox_spoofing"]
+    det = lambda u, k: next(d for d in u["detectors"] if d["key"] == k)
+    jh, jr, sh = det(jam, "hybrid"), det(jam, "rules"), det(spo, "hybrid")
+    first = lambda c: "same second" if c["first_alert_delay_s"] == 0 else "never" if c["first_alert_delay_s"] is None else f"after {_span(c['first_alert_delay_s'])}"
+    labels = [("published", "The 15 rules as first published"), ("odometer", "The same, with the car's speed as odometer"),
+              ("hybrid_v21", "The same, with the model re-calibrated on this phone"), ("time", "**16 rules: receiver time checked against the phone's own clock**")]
+    rows = "\n".join(f"| {label} | {first(cfg[k])} | {cfg[k]['captured_refused']} of {cap['fixes']} |" for k, label in labels)
+    minutes = lambda s_: round(s_ / 60)
+    tenths = lambda s_: int(s_ / 6) / 10          # 1 593 s reads 26.5 min and 513 s reads 8.5, as in the paper
+    rc = REAL["recalibrated"]
+    sim_share = round(100 * REAL["whole_drive_simulator_model"]["alert_seconds"] / REAL["epochs"])
+    false_share = 100 * jh["outside_normal_signal"]["alert_seconds"] / max(1, jh["outside_normal_signal"]["seconds"])
+    capture = (f"A phone in a car was captured by a real spoofer for {tenths(cap['duration_s'])} minutes: its clock was set back "
+               f"{minutes(abs(cap['time_offset_median_s']))} minutes and its position {cap['offset_while_parked_m']:.0f} m aside, and when the car drove off "
+               f"the phone stayed where the spoofer had put it, ending {cap['reported_max_error_m'] / 1000:.1f} km from the truth.")
+    if brief:
+        return f"""
+**On recordings of real attacks** (Jammertest 2024, Norway; VAARA dataset, University of Vaasa). {capture} The version first published alerted {first(cfg['published'])} and refused {cfg['published']['captured_refused']} of {cap['fixes']} captured fixes. With a sixteenth rule, receiver time checked against the phone's own clock, the alert comes in the {first(cfg['time'])} and **{cfg['time']['captured_refused']} of {cap['fixes']}** are refused, with no false alert in the clean periods. Real jamming of a u-blox receiver: **{jh['exposures_alerted']} of {jam['exposures']}** exposures alerted. On a clean real drive of {REAL['duration_min']} minutes the rules raise no false alarm.
+"""
+    return f"""
+### On recordings of real attacks
+
+The tables above come from a simulator. What follows does not. At Jammertest 2024 on Andøya, Norway, the authorities let jammers and spoofers transmit, and the University of Vaasa recorded a u-blox receiver and a phone in a car through it (the VAARA dataset). The recordings were replayed unchanged through the same adapter and detector (`python -m trustnav_engine.attackcheck`).
+
+**Real spoofing.** {capture} The u-blox beside it was not captured and serves as the reference.
+
+| Detector | First alert | Captured fixes refused |
+|---|---|---|
+{rows}
+
+The first version missed this attack: nothing in the spoofed stream was physically impossible. What the spoofer could not hide was time. With the sixteenth rule there is no alert in the {minutes(ph['clean_seconds'])} clean minutes before the capture nor in the {minutes(ph['no_test_seconds'])} minutes declared free of tests, and with the car's speed as odometer and its track as route the position handed on stays within {cfg['full']['handed_on_max_error_m']:.0f} m (median {cfg['full']['handed_on_median_error_m']} m; a best case).
+
+**Real jamming.** The u-blox drove past parked jammers and started inside a jammed area: {jam['exposures']} exposures. The rules alone alerted on {jr['exposures_alerted']}, because its NMEA stream carries no jamming indicator; the hybrid, its model re-calibrated on the {minutes(ATTACK['ublox_calibration']['seconds'])} minutes recorded before the first test, alerted on {jh['exposures_alerted']}, about {jh['alert_delay_median_s']} s in, and marked all {jh['exposures_below_trusted']} as degraded, with {false_share:.1f} % false alerts on clean-signal seconds. Beside the spoofer the same u-blox was not captured: it was shown as degraded for {100 * sh['tests_collapsed']['below_trusted_seconds'] // sh['tests_collapsed']['seconds']} % of {minutes(sh['tests_collapsed']['seconds'])} minutes, and its position was kept.
+
+Limits: two days of one campaign on two devices; the time rule needs a host clock, or a spoofer that moves time backwards. The recordings also exposed four defects in the adapter and the response layer, all fixed and tested.
+
+### On a real drive with no attack
+
+A public {REAL['duration_min']}-minute recording of a u-blox ZED-F9K driving a loop in Mountain View, with a survey-grade reference track (`python -m trustnav_engine.realcheck`). The rules alone raised **{REAL['whole_drive_rules_only']['alert_seconds']}** false alarms in the whole drive (lowest trust {REAL['whole_drive_rules_only']['min_trust']:.0f}); the usual signal-strength check raised {REAL['whole_drive_cn0_sats_baseline']['alert_seconds']} s. The model trained on the simulator alerted on {sim_share} % of the seconds, so it must be re-calibrated on the receiver in use: re-calibrated on the first {(rc['fit_seconds'] + rc['calibration_seconds']) // 60} minutes it raised {rc['test_no_attack']['alert_seconds']} alerts in the remaining {tenths(rc['test_seconds'])} minutes, and software attacks overlaid on that segment were caught after {', '.join(str(r['hybrid']['first_alert_delay_s']) for r in REAL['overlays']['runs'][:-1])} and {REAL['overlays']['runs'][-1]['hybrid']['first_alert_delay_s']} s (teleport, drift, jamming).
+"""
+
+
 def results_section() -> str:
     ex = META["experiments"]
     prot = META["protection"]
@@ -130,7 +183,7 @@ def results_section() -> str:
         prow.append(f"| {names[p['scenario']]} | {seen} | {p['protected_max_error_m']:,.0f} m | {hold} | {p['held_s']} s | {p['false_hold_s']} s |")
     h = ex["hybrid"]
     text = f"""
-All numbers come from the ten held-out scenarios ({h['support_positive'] + h['support_negative']:,} one-second observations) on routes the model never saw in training. The data is synthetic (one simulator produces every split), so these are an upper bound on real-world performance; the next step is a real receiver (section 8).
+All numbers come from the ten held-out scenarios ({h['support_positive'] + h['support_negative']:,} one-second observations) on routes the model never saw in training. The data is synthetic (one simulator produces every split), so these are an upper bound on real-world performance; the replays on real recordings are at the end of this section.
 
 ### Detection
 
@@ -160,6 +213,7 @@ Measured against simulator ground truth during each attack: the worst position a
 
 Worst spoofing error on an ordinary screen: **{prot['spoofing_worst_reported_error_m']:,.0f} m**; worst error of what the response layer passed on: **{prot['spoofing_worst_protected_error_m']:,.0f} m**. Jamming blank screen: **{prot['jamming_blank_s_without']} s** without, **{prot['jamming_blank_s_with']} s** with. Holds outside attacks (a brief dip on a normal run, or the seconds after an attack ends before the fix rejoins the estimate): {prot['false_hold_s_total']} s in total, each at an error of a few metres. A hold costs a few metres of odometer error even when the attack did not move the position (signal anomaly).
 
+{real_section()}
 ### Read these numbers with care
 
 {chr(10).join('- ' + l for l in META['limitations'])}
@@ -172,7 +226,7 @@ def results_brief() -> str:
     h = ex["hybrid"]
     prot = META["protection"]
     text = f"""
-Ten held-out scenarios, {h['support_positive'] + h['support_negative']:,} one-second observations, on routes the model never saw in training. Synthetic data, so an upper bound; the next step is a real receiver.
+Ten held-out scenarios, {h['support_positive'] + h['support_negative']:,} one-second observations, on routes the model never saw in training. Synthetic data, so an upper bound; replays on real recordings follow.
 
 | | Rules only | Model only | **Combined (TrustNav)** |
 |---|---|---|---|
@@ -184,13 +238,16 @@ Ten held-out scenarios, {h['support_positive'] + h['support_negative']:,} one-se
 7 of 7 attack types are caught; the stealth drift (Galileo signatures still valid) is caught after 42 s, where a fixed 150 m rule would need about 3.5 minutes.
 
 **What the response layer prevents.** Worst spoofing error an ordinary fleet screen would show: **{prot['spoofing_worst_reported_error_m']:,.0f} m**. Worst error of what TrustNav hands downstream: **{prot['spoofing_worst_protected_error_m']:,.0f} m**. Jamming blank screen: **{prot['jamming_blank_s_without']} s** without, **{prot['jamming_blank_s_with']} s** with.
-"""
+{real_section(brief=True)}"""
     return md(text)
 
 
 def next_brief() -> str:
     road = (HERE / "ROADMAP.md").read_text()
     phase2 = road.split("## Phase 2: real receiver (next two weeks)", 1)[1].split("## Phase 3", 1)[0]
+    # the brief lists what is still to do; what is done is in its results section
+    phase2 = "\n".join(line for line in phase2.split("\n") if not line.rstrip().endswith("| done |"))
+    phase2 = "\nAlready done: a phone as the receiver, a clean real drive replayed, and recordings of real attacks replayed (section 3).\n" + phase2
     text = "**Prevention, honestly.** No software can stop a jammer or a spoofer from transmitting; only antenna hardware mitigates at the radio level. What software can prevent is the damage: a fleet system acting on a false position. That is what the response layer does today.\n\n### Phase 2: real receiver (next two weeks)" + phase2 + """
 ### Later
 A vehicle's own odometer as the inertial input; a second antenna on the same vehicle to catch synchronous spoofing; real Galileo OSNMA from raw pages; map matching for vehicles without an assigned route; alerts by e-mail or SMS; drone integration (PX4); a Raspberry Pi edge box.
@@ -310,7 +367,8 @@ body.brief .figgrid {{ page-break-before: auto; }}
     </div>
     <div class="box">
       <b>What it is.</b> Every second, for each vehicle, TrustNav scores whether its satellite position can be believed (0 to 100), explains why in plain words, and refuses positions it does not believe, tracking the vehicle by its odometer instead. Three kinds of evidence are fused: physical rules, an anomaly model trained on normal driving only, and Galileo's own digital signatures (OSNMA).<br><br>
-      <b>Where it is.</b> Live demo at <a href="https://trustnav.vercel.app">trustnav.vercel.app</a>. Source, tests and this document at <a href="https://github.com/domail2karandeshmukh-cyber/trustnav">github.com/domail2karandeshmukh-cyber/trustnav</a>. All attacks are simulated in software; nothing is transmitted.
+      <b>Where it is.</b> Live demo at <a href="https://trustnav.vercel.app">trustnav.vercel.app</a>. Source, tests and this document at <a href="https://github.com/domail2karandeshmukh-cyber/trustnav">github.com/domail2karandeshmukh-cyber/trustnav</a>. Our attacks are simulated in software and the real ones are recordings made by others; nothing is transmitted.<br><br>
+      <b>On real attacks.</b> Replayed on public recordings from Jammertest 2024: the first version missed a phone captured by a real spoofer for 21 min 49 s; a sixteenth rule on receiver time now refuses every captured fix from the first second.
     </div>
   </div>
   <div class="meta">

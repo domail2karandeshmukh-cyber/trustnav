@@ -60,6 +60,10 @@ export function plainVerdict(f: Frame | null, kind: Thing): Plain | null {
   if (has(f, "R_OSNMA_FAILED")) {
     return { tone: f.st, title: "Satellite data is forged", body: `The Galileo satellites' digital signature does not match the navigation data the receiver is using: someone is transmitting fake Galileo messages.` + response };
   }
+  if (has(f, "R_TIME_JUMP")) {
+    const how = f.why.find((x) => x.code === "R_TIME_JUMP")?.detail.match(/moved ([\d,]+) s (back|forward)/);
+    return { tone: f.st, title: "Satellite time is being rewritten (spoofing)", body: `The receiver's clock ${how ? `moved ${how[1]} seconds ${how[2]}` : "jumped"} while the clock of the device it is plugged into ran on. Real satellites cannot do that: a transmitter is imitating them, and the position it gives cannot be believed even where it looks plausible.` + response };
+  }
   if (has(f, "R_POSITION_JUMP") || has(f, "R_IMPOSSIBLE_SPEED")) {
     const jump = f.why.find((x) => x.code === "R_POSITION_JUMP" || x.code === "R_IMPOSSIBLE_SPEED");
     return { tone: f.st, title: "Satellite signal is being faked (spoofing)", body: `The receiver says the ${thing} ${jump?.code === "R_POSITION_JUMP" ? `jumped ${jump.detail.match(/moved ([\d,]+ m)/)?.[1] ?? "a long way"} in one second` : "is moving faster than it physically can"}, which is impossible. A transmitter is imitating the satellites.` + response };

@@ -9,7 +9,7 @@ trustnav/
 ├── engine/                        Python detection engine
 │   ├── requirements.txt           numpy, scikit-learn, joblib, pytest
 │   ├── models/current/            trained model (model.joblib, model.json) + chosen fusion weights (fusion.json)
-│   ├── tests/                     32 automated tests (engine, response layer, receiver adapter, phone, real recording)
+│   ├── tests/                     42 automated tests (engine, response layer, receiver adapter, phone, time, real recordings)
 │   └── trustnav_engine/
 ├── dashboard/                     Next.js web app
 │   ├── app/                       page shell, global styles, icon
@@ -27,22 +27,23 @@ trustnav/
 
 | File | Lines | What it does |
 |---|---|---|
-| `config.py` | 105 | **All** thresholds and weights in one place so a reviewer can question each one. Platform profiles (`ROAD_VEHICLE`: 60 m/s, 8 m/s², 90 °/s, 250 m jump; `SMALL_UAV`), `RuleSettings`, `FusionSettings`, `TrustBands`, `IncidentSettings` |
+| `config.py` | 121 | **All** thresholds and weights in one place so a reviewer can question each one. Platform profiles (`ROAD_VEHICLE`: 60 m/s, 8 m/s², 90 °/s, 250 m jump; `SMALL_UAV`), `RuleSettings`, `FusionSettings`, `TrustBands`, `IncidentSettings` |
 | `geo.py` | 53 | Geodesy helpers: `haversine_m` (distance), `bearing_deg`, `offset`, `angle_diff_deg`, `LocalFrame` (lat/lon to metres) |
 | `routes.py` | 200 | `Route` class: a polyline the vehicle should follow, with `distance_to()` and `project()` (arc-length position, direction- and continuity-aware where the road doubles back). Road routes were computed with OSRM on OpenStreetMap data and stored in `data/routes.json`. Each route has one **role**: train, validation or held-out |
 | `simulator.py` | 269 | Deterministic synthetic observations (seeded). Normal driving with stops, corners and urban-canyon dips, plus attack overlays: `teleport`, `drift`, `signal`, `stealth_drift`, `osnma_forgery`, `jamming`, `drone_drift`. Every observation carries a ground-truth `attack` label. **Nothing is transmitted** |
 | `scenarios.py` | 95 | Catalogue: `training_specs` (normal only), `validation_specs`, `heldout_specs` (the 10 demo scenarios), `FLEET_DEVICES` and `fleet_specs` (the 7-platform live demo) |
-| `features.py` | 240 | `FeatureExtractor.update(obs)`: 36 features over a 5-observation rolling window, plus context. `MODEL_FEATURES` is the 19 used by the model |
-| `rules.py` | 140 | `evaluate()`: the 15 rules. Returns reasons, rule risk, critical flag. `_severity()` scales 0.5 to 1.0 |
-| `model.py` | 183 | `TailModel` and `AnomalyModel`: Isolation Forest plus tail detector, calibration, `risk_from_p`, `explain()`, `save`/`load` |
-| `pipeline.py` | 270 | `trust_status`, `fuse()` (noisy-OR), `IncidentTracker`, and `Detector.process(obs)` which turns one observation into one scored frame, then asks the response layer what to hand on |
-| `safeguard.py` | 160 | **Response layer.** `Safeguard.update(frame, obs)`: accept / hold / release logic, route-constrained dead reckoning from the odometer, rejoin tolerance, CONTINUE / VERIFY / ISOLATE actions |
-| `receiver.py` | 330 | **Real receiver adapter.** NMEA (GGA, RMC, VTG, GSA, GSV) and UBX (NAV-PVT, NAV-CLOCK, NAV-STATUS, NAV-SAT, MON-HW) parsers, `EpochBuilder` folding one second into one observation, serial port or log file input, `--no-model`, `--jsonl` |
-| `evaluate.py` | 250 | Train, pick fusion weights on validation routes, score held-out routes, compute precision, recall, F1, false-alarm rate, detection delay; `protection_report()` measures reported vs protected position error against ground truth |
-| `export.py` | 95 | Writes everything the dashboard needs to JSON |
+| `features.py` | 295 | `FeatureExtractor.update(obs)`: 36 features over a 5-observation rolling window, plus context. `_time()` keeps the trusted clock: elapsed time is counted on the host clock when there is one, otherwise on receiver time while it runs forward, and the difference is reported as `time_jump_s`. `MODEL_FEATURES` is the 19 used by the model |
+| `rules.py` | 149 | `evaluate()`: the 16 rules, the last one `R_TIME_JUMP` (receiver time against the host clock or against its own count, critical). Returns reasons, rule risk, critical flag. `_severity()` scales 0.5 to 1.0 |
+| `model.py` | 193 | `TailModel` and `AnomalyModel`: Isolation Forest plus tail detector, calibration, `risk_from_p`, `explain()`, `save`/`load` |
+| `pipeline.py` | 268 | `trust_status`, `fuse()` (noisy-OR), `IncidentTracker`, and `Detector.process(obs)` which turns one observation into one scored frame, then asks the response layer what to hand on |
+| `safeguard.py` | 174 | **Response layer.** `Safeguard.update(frame, obs, clock)`: accept / hold / release logic, stepped on the trusted clock so skipped seconds do not shorten the distance, route-constrained dead reckoning from the odometer, rejoin tolerance, CONTINUE / VERIFY / ISOLATE actions |
+| `receiver.py` | 428 | **Real receiver adapter.** NMEA (GGA, RMC, VTG, GSA, GSV) and UBX (NAV-PVT, NAV-CLOCK, NAV-STATUS, NAV-SAT, MON-HW) parsers, tolerant of a sentence glued to a binary frame; `EpochBuilder` folding one second into one observation (a missing satellite count stays unknown, a second without time is marked), serial port or log file input, `--no-model`, `--jsonl` |
+| `evaluate.py` | 259 | Train, pick fusion weights on validation routes, score held-out routes, compute precision, recall, F1, false-alarm rate, detection delay; `protection_report()` measures reported vs protected position error against ground truth |
+| `export.py` | 99 | Writes everything the dashboard needs to JSON |
 | `demo_feed.py` | 59 | Precomputes the 7-platform fleet with the real detector for the cloud demo |
-| `realcheck.py` | 230 | **Real receiver check.** Replays a recorded drive (default: the public u-blox ZED-F9K recording in `data/real/`, with its NovAtel SPAN reference) through the adapter and detector: rules alone, simulator model and C/N0+sats baseline on the whole drive; the model re-calibrated on the first part of the drive and tested on the rest; teleport, drift and jamming overlays (`RealOverlay`) on the test segment with detection delay and worst raw / protected error against the reference; the reference track is the route, its speed over ground the odometer. `--out` writes the results, with the drive as a polyline (`track_summary`), to `paper/figures/realcheck.json` and `dashboard/public/data/realcheck.json` |
-| `phone.py` | 170 | **Phone bridge.** Pulls the fixes the `/phone` page stored in the cloud (`phone_pull`), maps them to observations (signal inputs stay None, the phone's real speed stands in for the odometer), applies the attack overlay chosen on the phone (`Overlay`: teleport 8 km east, drift 0.7 m/s, jam = no fix), scores them with `Detector` and posts frames as a `receiver` run. `--route`, `--model`, `--from-start`, `--dry-run` |
+| `realcheck.py` | 301 | **Real drive, no attack.** Replays a recorded drive (default: the public u-blox ZED-F9K recording in `data/real/`, with its NovAtel SPAN reference) through the adapter and detector: rules alone, simulator model and C/N0+sats baseline on the whole drive; the model re-calibrated on the first part of the drive and tested on the rest; teleport, drift and jamming overlays (`RealOverlay`) on the test segment with detection delay and worst raw / protected error against the reference; the reference track is the route, its speed over ground the odometer. `--out` writes the results, with the drive as a polyline (`track_summary`), to `paper/figures/realcheck.json` and `dashboard/public/data/realcheck.json` |
+| `attackcheck.py` | 538 | **Real attacks.** Replays the VAARA recordings of Jammertest 2024 (a u-blox receiver and a phone in a car, under real jamming and spoofing). `fetch()` downloads the six files on demand with a SHA-256 check into a git-ignored folder; `ublox_observations()` and `phone_observations()` turn the logs into observations (the phone's lines carry its own system clock as `host_t`); `reference()` is the receiver the spoofer did not capture; `phone_session()` compares the rules as first published, with an odometer, with the re-calibrated model and with the time rule, and measures what the response layer hands on; `ublox_session()` counts jamming exposures alerted and false alerts by signal state. `--out` writes `paper/figures/attackcheck.json` and `dashboard/public/data/attackcheck.json` |
+| `phone.py` | 193 | **Phone bridge.** Pulls the fixes the `/phone` page stored in the cloud (`phone_pull`), maps them to observations (signal inputs stay None, the phone's real speed stands in for the odometer), applies the attack overlay chosen on the phone (`Overlay`: teleport 8 km east, drift 0.7 m/s, jam = no fix), scores them with `Detector` and posts frames as a `receiver` run. `--route`, `--model`, `--from-start`, `--dry-run` |
 | `stream.py` | 103 | Live runner: one observation per second per device, posts to the ingest endpoint. `--dry-run`, `--speed` |
 
 ### The core function: `Detector.process`
@@ -53,7 +54,7 @@ reasons, rule_risk, critical = evaluate(f, ctx, ...)    # 2. rules
 ml = median(self.ml_hist)                               # 3. model risk (3 s trailing median)
 hybrid = fuse(rule_risk, ml, st.fusion, critical, floor)  # 4. noisy-OR fusion
 trust = 100.0 - hybrid                                  # 5. trust score
-frame["resp"] = self.safeguard.update(frame, o)         # 6. response: accept or hold, protected position, action
+frame["resp"] = self.safeguard.update(frame, o, clock)  # 6. response: accept or hold, protected position, action
 events = self.incidents.update(frame)                   # 7. open / update / resolve incidents
 return frame, events
 ```
@@ -82,7 +83,11 @@ action = CONTINUE if acceptable else ISOLATE if (critical or trust < 25) else VE
 
 `test_realcheck.py` (3): the real recording parses into one observation per second with primary-band C/N0; the rules raise nothing on its opening minutes and the track summary labels the fit, calibration and test segments in order; the jam overlay degrades C/N0 then removes the fix.
 
-`test_receiver.py` (6): NMEA sentences parse; two epochs become two observations; a no-fix epoch has no position; UBX frames and the five messages parse (jamming indicator, clock, satellites, PVT); the live detector scores receiver observations; rules-only mode has no model risk.
+`test_receiver.py` (8): NMEA sentences parse; two epochs become two observations; a no-fix epoch has no position; UBX frames and the five messages parse (jamming indicator, clock, satellites, PVT); the live detector scores receiver observations; rules-only mode has no model risk; a sentence glued to a binary frame is still read; the satellite count stays unknown when the sentence that carries it is dropped.
+
+`test_time.py` (5): receiver time set back is critical for as long as it lasts against the host clock; time running backwards is caught without a host clock, and a gap is not; a step of the host clock is not blamed on the receiver; the position-jump limit scales with the time since the last fix; a hold is stepped on the clock, so skipped seconds do not shorten the distance.
+
+`test_attackcheck.py` (3): the phone's log lines carry the phone's own clock; a two-hertz log is thinned to one observation a second; seconds are sorted into test, no-test, margin and clean. The recordings themselves are not needed to run the tests.
 
 ## Supabase (`supabase/`)
 
@@ -131,7 +136,8 @@ Stack: Next.js 15, React 19, TypeScript, MapLibre GL, supabase-js, self-hosted B
 | `ReplayView.tsx` | Scenario replay with scrubber, ghost "real position", story mode |
 | `SpaceTime.tsx` | Canvas 4D view: ground grid, time axis, trust-coloured ribbons |
 | `ResultsView.tsx`, `MethodView.tsx` | Evaluation numbers (headline scoreboard, comparison tables, weight grid) and method/limitations; both load lazily |
-| `RealCheck.tsx` | "On a real receiver" on the Results page: the track of the public u-blox drive (fit, calibration, test), false alarms before and after re-calibration, and the three overlaid attacks, read from `public/data/realcheck.json` |
+| `AttackCheck.tsx` | "On recordings of real attacks" on the Results page: the error of the position a captured phone reports against the error of the position handed on (log scale), the four detectors compared (first alert, captured fixes refused), and three tiles for the u-blox under real jamming and beside the spoofer, read from `public/data/attackcheck.json` |
+| `RealCheck.tsx` | "On a real drive with no attack" on the Results page: the track of the public u-blox drive (fit, calibration, test), false alarms before and after re-calibration, and the three overlaid attacks, read from `public/data/realcheck.json` |
 | `FusionLab.tsx` | "Try it" on the Method page: two sliders (rule risk, model risk), the trust an average would give against the noisy-OR fusion with the chosen weights, and whether the fix is accepted or refused |
 | `HeroScene.tsx` | The opening scene on a canvas: the van on its recorded route, the teleport that throws the reported position 8 km away, the trust gauge; geometry in `lib/hero-path.ts` (from the teleport scenario); a still frame under reduced motion |
 | `Instruments.tsx` | Trust tape, trust chart, gauges, the OSNMA line and the response line (accepted / held / isolated, with what to do) |
@@ -142,7 +148,7 @@ Stack: Next.js 15, React 19, TypeScript, MapLibre GL, supabase-js, self-hosted B
 
 ### Tests (`dashboard/tests/e2e.py`)
 
-109 Playwright checks: every view, the opening scene and its link-preview image, the results scoreboard and real-receiver section, the fusion lab, interactions, keyboard shortcuts, command palette, report, story mode, space-time, the response layer in the replay panel, map and results, the comparison table, the live KPI strip, trust-ring markers, live shields and lie labels, alert sparklines, actions and acknowledgements, the playbook, presentation mode, phone layout, accessibility (axe), and a JavaScript size budget.
+109 Playwright checks: every view, the opening scene and its link-preview image, the results scoreboard, the real-attacks section and the real-drive section, the fusion lab, interactions, keyboard shortcuts, command palette, report, story mode, space-time, the response layer in the replay panel, map and results, the comparison table, the live KPI strip, trust-ring markers, live shields and lie labels, alert sparklines, actions and acknowledgements, the playbook, presentation mode, phone layout, accessibility (axe), and a JavaScript size budget.
 
 ## Deployment
 

@@ -127,7 +127,8 @@ async def main():
         check("results: protection section", prot == 1)
         await pg.wait_for_selector(".real-attack", timeout=15000)
         check("results: protection rows and the real-receiver section", await pg.locator(".scen").nth(1).locator("tbody tr").count() >= 10
-              and await pg.locator(".real-attack").count() == 3 and await pg.locator(".real-map svg path").count() == 6 and "0.8 m" in (await pg.locator(".real-attacks").inner_text()))
+              and await pg.locator(".real-attack").count() == 3 and await pg.locator(".real:not(.atk) .real-map svg path").count() == 6 and "0.8 m" in (await pg.locator(".real:not(.atk) .real-attacks").inner_text())
+              and await pg.locator(".atk-table tbody tr").count() == 4 and "909 of 909" in (await pg.locator(".atk-table").inner_text()) and await pg.locator(".atk .real-fact").count() == 3)
         await axe(pg, "results")
         await pg.keyboard.press("4"); await pg.wait_for_selector(".pipeline")
         await pg.locator(".lab-presets .btn:has-text('Stealth drift')").click(); await pg.wait_for_timeout(300)
