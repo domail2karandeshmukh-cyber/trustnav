@@ -29,6 +29,35 @@ async def page_for(b, w, h, dark=False, tour_done=True):
     await pg.reload(wait_until="domcontentloaded")
     return ctx, pg, errs
 
+OVERLAYS = {"fleet strip": ".kpis", "legend": ".live-legend", "alerts": ".alerts-float", "transport": ".strip", "map note": ".map-note", "map credit": ".maplibregl-ctrl-attrib"}
+
+async def overlay_overlaps(b, w, h):
+    """What floats over the live map, on a screen w x h: the pairs that overlap. A laptop or a projector is narrower
+    than the screen the other checks use, and the transport strip is measured with all four status counts."""
+    ctx, pg, _ = await page_for(b, w, h)
+    await pg.wait_for_selector(".strip-counts > span"); await pg.wait_for_timeout(1500)
+    found = await pg.evaluate("""(sel) => {
+      const counts = document.querySelector('.strip-counts');
+      for (let k = counts.children.length; k < 4; k++) counts.appendChild(counts.children[0].cloneNode(true));
+      const R = {};
+      for (const [name, s] of Object.entries(sel)) {
+        const e = document.querySelector(s); if (!e || getComputedStyle(e).display === 'none') continue;
+        const r = e.getBoundingClientRect(); if (r.width && r.height) R[name] = r;
+      }
+      const strip = document.querySelector('.strip');
+      const inner = Math.max(...[...strip.children].filter((c) => !c.classList.contains('pop')).map((c) => c.getBoundingClientRect().right));
+      const out = [], names = Object.keys(R);
+      for (let i = 0; i < names.length; i++) for (let j = i + 1; j < names.length; j++) {
+        const A = R[names[i]], B = R[names[j]];
+        if (Math.min(A.right, B.right) - Math.max(A.left, B.left) > 0 && Math.min(A.bottom, B.bottom) - Math.max(A.top, B.top) > 0) out.push(names[i] + ' over ' + names[j]);
+      }
+      if (inner > R['transport'].right + 1) out.push('transport spills');
+      if (document.documentElement.scrollWidth > innerWidth) out.push('page scrolls sideways');
+      return out;
+    }""", OVERLAYS)
+    await ctx.close()
+    return [f"{w}x{h}: {x}" for x in found]
+
 async def axe(pg, name):
     await pg.add_script_tag(path=str(AXE))
     r = await pg.evaluate("axe.run(document, {runOnly: ['wcag2a','wcag2aa'], rules: {'color-contrast': {enabled: true}}})")
@@ -40,6 +69,19 @@ async def axe(pg, name):
     for v in r["violations"]:
         if v["impact"] not in ("serious", "critical"):
             print(f"   note {name}: {v['id']} x{len(v['nodes'])} ({v['impact']})")
+
+async def axe_clean(pg, name):
+    """True when the page has no serious accessibility violation; prints what it found otherwise."""
+    await pg.add_script_tag(path=str(AXE))
+    r = await pg.evaluate("axe.run(document, {runOnly: ['wcag2a','wcag2aa'], rules: {'color-contrast': {enabled: true}}})")
+    serious = [v for v in r["violations"] if v["impact"] in ("serious", "critical")]
+    for v in serious:
+        for n in v["nodes"][:3]:
+            print(f"   {name}: {v['id']}: {n['target']} {n['html'][:140]}")
+    return not serious
+
+async def open_tab(pg):
+    return (await pg.locator(".tab[aria-selected='true']").inner_text()).strip()
 
 async def main():
     async with async_playwright() as p:
@@ -119,24 +161,49 @@ async def main():
         check("space-time: renders in replay", await pg.locator(".workspace.replay .st canvas").count() == 1)
         await pg.locator(".workspace.replay .stage-toggle button").nth(0).click(); await pg.wait_for_timeout(300)
         await axe(pg, "replay")
-        # results + method
-        await pg.keyboard.press("3"); await pg.wait_for_selector(".compare", timeout=15000)
-        check("results: scoreboard and comparison table", await pg.locator(".score-tile").count() == 4 and await pg.locator(".score-bar").count() == 9 and await pg.locator(".compare tbody tr").count() >= 6)
-        check("results: scenario tapes", await pg.locator(".scen .tape").count() >= 10)
-        prot = await pg.locator("h2:has-text('What the response layer prevents')").count()
-        check("results: protection section", prot == 1)
-        await pg.wait_for_selector(".real-attack", timeout=15000)
-        check("results: protection rows and the real-receiver section", await pg.locator(".scen").nth(1).locator("tbody tr").count() >= 10
-              and await pg.locator(".real-attack").count() == 3 and await pg.locator(".real:not(.atk) .real-map svg path").count() == 6 and "0.8 m" in (await pg.locator(".real:not(.atk) .real-attacks").inner_text())
-              and await pg.locator(".atk-table tbody tr").count() == 4 and "909 of 909" in (await pg.locator(".atk-table").inner_text()) and await pg.locator(".atk .real-fact").count() == 3)
-        await axe(pg, "results")
+        # results: a board of five exhibits, one screen each
+        await pg.keyboard.press("3"); await pg.wait_for_selector(".board-say", timeout=15000)
+        await pg.wait_for_selector(".doors .door:nth-child(3)", timeout=15000)
+        doors = await pg.locator(".doors").inner_text()
+        fits = await pg.evaluate("(() => { const d = document.querySelector('.doc'); return d.scrollHeight - d.clientHeight; })()")
+        check("results: the overview fits one screen: a statement, three readings, the bars and three doors",
+              "within one second" in (await pg.locator(".board-say").inner_text()) and await pg.locator(".reads .read").count() == 3 and await pg.locator(".score-bar").count() == 9
+              and await pg.locator(".board-head .tab").count() == 5 and await open_tab(pg) == "Overview" and await pg.locator(".doors .door").count() == 3
+              and "21 min 49 s" in doors and "same second" in doors and "8.0 km" in doors and "29 m" in doors and fits <= 4, f"{fits}px to scroll; {doors[:60]!r}")
+        await axe(pg, "results overview")
+        await pg.locator(".tab:has-text('Overview')").focus(); await pg.keyboard.press("ArrowRight"); await pg.wait_for_selector(".scen .tape", timeout=15000)
+        scen = await pg.locator(".scen").inner_text()
+        check("results: arrow keys move between tabs; each attack has its tape and what the response prevented",
+              await open_tab(pg) == "Each attack" and await pg.locator(".scen .tape").count() >= 10 and await pg.locator(".scen tbody tr").count() == 10 and "8.0 km" in scen and "same second" in scen and "42 s" in scen)
+        await pg.locator(".tab:has-text('Overview')").click(); await pg.locator(".doors .door").first.click(); await pg.wait_for_selector(".atk-table", timeout=15000)
+        opened = await open_tab(pg) == "Real attacks" and "tab=real-attacks" in (await pg.evaluate("location.hash"))
+        exhibit = (await pg.locator(".atk-table tbody tr").count() == 4 and "909 of 909" in (await pg.locator(".atk-table").inner_text())
+                   and await pg.locator(".atk .real-fact").count() == 3 and await pg.locator(".atk .real-map svg path").count() >= 3)
+        await pg.locator(".atk details.fine summary").click(); await pg.wait_for_timeout(200)
+        check("results: a door opens the real-attacks exhibit, the address remembers it, the fine print opens on demand",
+              opened and exhibit and "VAARA" in (await pg.locator(".atk details.fine").inner_text()))
+        await axe(pg, "results real attacks")
+        await pg.locator(".tab:has-text('Real drive')").click(); await pg.wait_for_selector(".real-attack", timeout=15000)
+        drive = (await pg.locator(".real-attack").count() == 3 and await pg.locator(".real:not(.atk) .real-map svg path").count() == 6
+                 and "0.8 m" in (await pg.locator(".real:not(.atk) .real-attacks").inner_text()) and await pg.locator(".real:not(.atk) .real-fact").count() == 3)
+        await pg.locator(".tab:has-text('Full tables')").click(); await pg.wait_for_selector(".compare", timeout=15000)
+        check("results: real drive exhibit and the full tables behind it", drive and await pg.locator(".compare tbody tr").count() >= 6 and await pg.locator(".scen.prot tbody tr").count() >= 10
+              and await pg.locator(".heat td").count() >= 9 and await pg.locator("h2:has-text('Read these numbers with care')").count() == 1 and await axe_clean(pg, "results tables"))
+        # method: the same board
         await pg.keyboard.press("4"); await pg.wait_for_selector(".pipeline")
+        idea = (await pg.locator(".pipeline > div").count() >= 6 and await pg.locator(".trio > div").count() == 3 and await pg.locator("h2:has-text('From detection to response')").count() == 1)
+        await axe(pg, "method")
+        await pg.locator(".tab:has-text('Try it')").click(); await pg.wait_for_selector(".lab-presets")
         await pg.locator(".lab-presets .btn:has-text('Stealth drift')").click(); await pg.wait_for_timeout(300)
         lab = await pg.locator(".lab-verdict").inner_text()
-        check("method: pipeline figure and fusion lab", await pg.locator(".pipeline > div").count() >= 6 and "Fix refused" in lab and "= 80" in lab, lab[:60])
-        check("method: response section", await pg.locator("h2:has-text('From detection to response')").count() == 1)
-        check("method: comparison table", await pg.locator(".compare.landscape tbody tr").count() == 8)
-        await axe(pg, "method")
+        check("method: pipeline figure, three ideas and the fusion lab", idea and "Fix refused" in lab and "= 80" in lab and await axe_clean(pg, "method lab"), lab[:60])
+        await pg.locator(".board-head .tab").nth(2).click(); await pg.wait_for_selector(".rulegrid")
+        rules = await pg.locator(".rulegrid li").count() == 16 and await pg.locator(".rulegrid em").count() == 3 and await axe_clean(pg, "method rules")
+        await pg.locator(".tab:has-text('Against what exists')").click(); await pg.wait_for_selector(".compare.landscape")
+        table = await pg.locator(".compare.landscape tbody tr").count() == 8 and await axe_clean(pg, "method compare")
+        await pg.locator(".tab:has-text('Fine print')").click(); await pg.wait_for_selector(".split-list")
+        check("method: sixteen rules with three critical, the comparison table and the fine print",
+              rules and table and await pg.locator(".formula").count() == 2 and await pg.locator(".split-list > li").count() == 3)
         await pg.keyboard.press("1"); await pg.wait_for_selector(".row-name")
         await axe(pg, "live")
         # space-time view
@@ -149,7 +216,8 @@ async def main():
         await pg.keyboard.press("t"); await pg.wait_for_timeout(400)
         check("live: fleet timeline dock", await pg.locator(".timeline .tl-row").count() >= 5)
         check("v6: no stray dialog before the live checks", await pg.locator(".report-back, .caption.present").count() == 0)
-        check("v6: fleet KPI strip", await pg.locator(".kpis .kpi").count() == 4)
+        tight = await overlay_overlaps(b, 1280, 720) + await overlay_overlaps(b, 1366, 768)
+        check("v6: fleet KPI strip, and nothing over the map overlaps on a 1280 or 1366 wide screen", await pg.locator(".kpis .kpi").count() == 4 and not tight, "; ".join(tight))
         check("v7: map legend", await pg.locator(".live-legend span").count() >= 5)
         check("v7: fleet headline in plain words", "believed" in (await pg.locator(".headline").inner_text()))
         await pg.keyboard.press("Shift+?"); await pg.wait_for_timeout(400)

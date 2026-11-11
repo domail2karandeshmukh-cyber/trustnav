@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { IconPlay } from "./Icons";
+import { IconPlay, Wordmark } from "./Icons";
 import HeroScene from "./HeroScene";
 import { HERO, HERO_LANGS, HERO_NAMES, heroLang, type HeroLang } from "@/lib/i18n-hero";
 
@@ -32,7 +32,7 @@ export default function Hero({ onStory, onConsole, onExplain }: { onStory: () =>
       <HeroScene />
       <div className="hero-in">
         <div className="hero-top">
-          <div className="hero-kicker">TrustNav</div>
+          <div className="hero-kicker"><Wordmark />TrustNav</div>
           <label className="hero-lang">
             <span>{t.language}</span>
             <select value={lang} onChange={(e) => setLang(e.target.value as HeroLang)} aria-label={t.language}>
@@ -44,8 +44,8 @@ export default function Hero({ onStory, onConsole, onExplain }: { onStory: () =>
         <p>{t.lede}</p>
         <div className="hero-actions">
           <button className="btn hero-btn primary" onClick={() => { close(); onStory(); }}><IconPlay size={18} /> {t.story}</button>
-          {onExplain && <button className="btn hero-btn" onClick={() => { close(); onConsole(); onExplain(); }}>{t.explain}</button>}
           <button className="btn hero-btn" onClick={() => { close(); onConsole(); }}>{t.console}</button>
+          {onExplain && <button className="btn hero-btn quiet" onClick={() => { close(); onConsole(); onExplain(); }}>{t.explain}</button>}
         </div>
         <div className="hero-facts">
           {t.facts.map(([b, s]) => <span key={b}><b>{b}</b> {s}</span>)}

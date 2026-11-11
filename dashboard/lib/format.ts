@@ -23,11 +23,11 @@ export const STATUS_WORD: Record<Status, string> = {
 };
 
 export const OSNMA_INFO: Record<Osnma, { word: string; tone: string; help: string }> = {
-  verified: { word: "Verified", tone: "var(--trusted)", help: "Galileo navigation data carries valid OSNMA signatures." },
-  pending: { word: "Pending", tone: "var(--ink-2)", help: "Receiver is still collecting the keys it needs (about 40 s after start)." },
-  unavailable: { word: "Lost", tone: "var(--degraded)", help: "Authenticated Galileo data disappeared. Ambiguous on its own: buildings can cause it, so can a GPS-only spoofer." },
-  failed: { word: "Failed", tone: "var(--untrusted)", help: "Signature check failed: the Galileo data was not signed by Galileo. Strong evidence of forgery." },
-  unknown: { word: "Unknown", tone: "var(--ink-3)", help: "Receiver does not report OSNMA. Never treated as a failure." },
+  verified: { word: "Verified", tone: "var(--trusted)", help: "Galileo data carries valid signatures (OSNMA)." },
+  pending: { word: "Pending", tone: "var(--ink-2)", help: "The receiver is still collecting keys (about 40 s after start)." },
+  unavailable: { word: "Lost", tone: "var(--degraded)", help: "Signed Galileo data disappeared. Ambiguous on its own." },
+  failed: { word: "Failed", tone: "var(--untrusted)", help: "The data was not signed by Galileo: strong evidence of forgery." },
+  unknown: { word: "Unknown", tone: "var(--ink-3)", help: "This receiver does not report it. Never treated as a failure." },
 };
 
 export const ATTACK_WORD: Record<string, string> = {

@@ -227,13 +227,13 @@ export default function LiveView({ routes, theme, onHandle, visible, onGuide }: 
         ) : (
           <>
             <header className="panel-head">
-              <div><h1>Fleet</h1>{headline && <p className="headline" aria-live="polite">{headline}</p>}</div>
+              <h1>Fleet</h1>
               <div className="seg" role="group" aria-label="Filter platforms">
                 <button aria-pressed={filter === "all"} onClick={() => setFilter("all")}>All <span className="num">{sorted.length}</span></button>
                 <button aria-pressed={filter === "attention"} onClick={() => setFilter("attention")}>Needs attention <span className="num">{attention.length}</span></button>
               </div>
+              {headline && <p className="headline" aria-live="polite">{headline}</p>}
             </header>
-            <p className="panel-blurb">TrustNav checks, every second, whether each vehicle&apos;s satellite position can be believed, and refuses the ones that cannot. <button className="link" onClick={onGuide}>How to read this screen</button></p>
             {!wide && open.length > 0 && <div className="panel-sec">{alerts}</div>}
             {fleet.source === "connecting" ? (
               <div className="rows">{[0, 1, 2, 3].map((i) => <div key={i} className="row skeleton" />)}</div>
@@ -244,7 +244,7 @@ export default function LiveView({ routes, theme, onHandle, visible, onGuide }: 
                 {listed.map((d) => <FleetRow key={d.id} device={d} frames={fleet.frames[d.id] ?? []} routes={routes} onPick={() => setSelected(d.id)} />)}
               </ul>
             )}
-            <p className="panel-foot">Sorted by trust, lowest first. Each strip shows the last two minutes, one cell per second.</p>
+            <p className="panel-foot">Lowest trust first. <button className="link" onClick={onGuide}>How to read this screen</button></p>
           </>
         )}
       </aside>
@@ -414,10 +414,10 @@ function DeviceDetail({ device, frames, incidents, routeName, onBack, follow, on
           </ul>
         </section>
       )}
-      <section className="panel-sec">
-        <h2>Measurements</h2>
+      <details className="panel-sec fold">
+        <summary>Measurements</summary>
         <Signals frame={f} extra={f?.atk == null ? undefined : [["Simulator truth", f.atk ? "Under attack" : "Clean"]]} />
-      </section>
+      </details>
     </div>
   );
 }
@@ -573,7 +573,7 @@ function StatusStrip({ fleet, counts, timeline, onTimeline, present, onPresent, 
   const label = fleet.source === "live" ? "Live from the cloud" : fleet.source === "loop" ? "Recorded demo, looping" : "Connecting";
   return (
     <div className="float strip">
-      <button className={`src ${fleet.source}`} onClick={() => setHealth((v) => !v)} aria-expanded={health} title="System health"><i />{label}</button>
+      <button className={`src ${fleet.source}`} onClick={() => setHealth((v) => !v)} aria-expanded={health} title="System health"><i />{fleet.source === "loop" ? <>Recorded demo<span className="src-more">, looping</span></> : label}</button>
       {health && (
         <div className="pop health" role="dialog" aria-label="System health">
           <div className="pop-head"><b>System health</b><button className="iconbtn" onClick={() => setHealth(false)} aria-label="Close"><IconClose size={16} /></button></div>
@@ -588,7 +588,7 @@ function StatusStrip({ fleet, counts, timeline, onTimeline, present, onPresent, 
           <p>Reads are public and synthetic. Writes need the ingest token or the presenter passcode.</p>
         </div>
       )}
-      {fleet.source !== "connecting" && <span className="num strip-time">{mmss(fleet.elapsed)}{fleet.duration ? ` / ${mmss(fleet.duration)}` : ""}</span>}
+      {fleet.source !== "connecting" && <span className="num strip-time">{mmss(fleet.elapsed)}{fleet.duration ? <span className="strip-total"> / {mmss(fleet.duration)}</span> : null}</span>}
       <span className="strip-counts" aria-label={ORDER.filter((s) => counts[s] > 0).map((s) => `${counts[s]} ${STATUS_WORD[s].toLowerCase()}`).join(", ")}>
         {ORDER.filter((s) => counts[s] > 0).map((s) => (
           <span key={s} title={`${counts[s]} ${STATUS_WORD[s].toLowerCase()}`}><i style={{ background: STATUS_COLOR[s] }} /><span className="num">{counts[s]}</span><span className="strip-word"> {STATUS_WORD[s].toLowerCase()}</span></span>

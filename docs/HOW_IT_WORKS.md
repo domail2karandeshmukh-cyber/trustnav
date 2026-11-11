@@ -165,8 +165,8 @@ Tables: `devices`, `runs`, `frames` (one row per scored second, including the `r
 |---|---|
 | **Live** | 3D map of the fleet, trust per vehicle, alert feed, device detail with reasons and the response (accepted / held / isolated), timeline dock, report export |
 | **Replay** | Ten recorded scenarios with a scrubber, the real path, the protected path the response layer handed on, and a narrated story mode |
-| **Results** | The evaluation numbers, per-scenario outcomes, what the response layer prevented, and the two replays on real recordings (real attacks, a real drive with no attack) |
-| **Method** | How it works and its limitations |
+| **Results** | Five tabs, one screen each: an overview, each attack with what the response prevented, the real attacks, the real drive, and the full tables |
+| **Method** | Five tabs: the pipeline in one picture, the fusion lab, the sixteen rules, the comparison with what exists, the fine print |
 | **Space-time** | A 4D view: ground is the map, height is time, each track is a ribbon coloured by trust |
 
 The map is **MapLibre GL** with **OpenStreetMap** data (CARTO styles) and 3D buildings. Nothing about a position is hidden from the user: the *Why* panel lists every reason the engine produced.

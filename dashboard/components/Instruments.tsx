@@ -92,21 +92,73 @@ export function TrustFigure({ frame, since }: { frame: Frame | null; since?: str
 const SEV_COLOR: Record<Reason["severity"], string> = { MEDIUM: "var(--degraded)", HIGH: "var(--suspicious)", CRITICAL: "var(--untrusted)" };
 const SEV_WORD: Record<Reason["severity"], string> = { MEDIUM: "Medium", HIGH: "High", CRITICAL: "Critical" };
 
+interface Unusual { name: string; value: string; lo: string; hi: string }
+const NUMBER = "(-?[\\d.]+(?:e[+-]?\\d+)?)";
+const UNUSUAL = new RegExp(`^(.+?) ${NUMBER} \\(normal ${NUMBER} to ${NUMBER}\\)$`);
+// the engine names a measure without its unit; the unit is the one in the feature's key
+const UNUSUAL_UNIT: Record<string, string> = {
+  "route deviation": "m", "step distance": "m", "range residual": "m",
+  "derived speed": "m/s", "speed disagreement": "m/s", "GNSS-inertial mismatch": "m/s", "acceleration": "m/s²", "heading rate dps": "°/s",
+  "mean C/N0": "dB-Hz", "C/N0 spread": "dB-Hz", "C/N0 change": "dB-Hz",
+  "clock bias jump": "ns", "clock drift change": "ns/s", "Doppler change": "Hz",
+};
+const UNUSUAL_NAME: Record<string, string> = { "heading rate dps": "heading rate", "pdop delta": "PDOP change", "satellite count delta": "satellite count change" };
+
+/** The measures the model names as most unusual, each with its normal range; null when the wording is anything else. */
+function unusual(detail: string): Unusual[] | null {
+  const at = detail.indexOf("Most unusual: ");
+  if (at < 0) return null;
+  const out: Unusual[] = [];
+  for (const part of detail.slice(at + 14).replace(/\.$/, "").split("; ")) {
+    const m = UNUSUAL.exec(part);
+    if (!m) return null;
+    out.push({ name: m[1], value: m[2], lo: m[3], hi: m[4] });
+  }
+  return out.length ? out : null;
+}
+
+/** Where a value sits, in percent, on a track whose middle third is the normal range. Far values approach the ends. */
+function place(v: number, lo: number, hi: number): number {
+  if (![v, lo, hi].every(Number.isFinite)) return 50;
+  const t = (v - lo) / (hi - lo || Math.abs(hi) || 1);
+  if (t < 0) return 34 - 30 * (-t / (1 - t));
+  if (t > 1) return 66 + 30 * ((t - 1) / t);
+  return 34 + 32 * t;
+}
+
 export function Evidence({ frame, limit = 4 }: { frame: Frame | null; limit?: number }) {
   if (!frame) return <p className="quiet">Waiting for data.</p>;
   if (!frame.why.length) return <p className="quiet">Nothing unusual. No rule has fired and the model sees normal behaviour.</p>;
   return (
     <ol className="reasons">
-      {frame.why.slice(0, limit).map((r) => (
-        <li key={r.code} style={{ borderColor: SEV_COLOR[r.severity] }}>
-          <div className="reason-top">
-            <h4>{gloss(r.title)}</h4>
-            <span className="sev" style={{ color: SEV_COLOR[r.severity] }}>{SEV_WORD[r.severity]}</span>
-            <span className="contrib num" title="Risk added by this evidence">+{Math.round(r.contribution)}</span>
-          </div>
-          <p>{gloss(r.detail)}</p>
-        </li>
-      ))}
+      {frame.why.slice(0, limit).map((r) => {
+        const rows = unusual(r.detail);
+        return (
+          <li key={r.code} style={{ borderColor: SEV_COLOR[r.severity] }}>
+            <div className="reason-top">
+              <h4>{gloss(r.title)}</h4>
+              <span className="sev" style={{ color: SEV_COLOR[r.severity] }}>{SEV_WORD[r.severity]}</span>
+              <span className="contrib num" title="Risk added by this evidence">+{Math.round(r.contribution)}</span>
+            </div>
+            {rows ? (
+              <ul className="unusual">
+                {rows.map((u) => {
+                  const v = Number(u.value), lo = Number(u.lo), hi = Number(u.hi);
+                  const unit = UNUSUAL_UNIT[u.name];
+                  return (
+                    <li key={u.name}>
+                      <span>{gloss(UNUSUAL_NAME[u.name] ?? u.name)}</span>
+                      <b className="num">{u.value}{unit ? ` ${unit}` : ""}</b>
+                      <i aria-hidden="true"><u style={{ left: `${place(v, lo, hi)}%`, background: v < lo || v > hi ? SEV_COLOR[r.severity] : "var(--ink-3)" }} /></i>
+                      <small className="num">normal {u.lo} to {u.hi}</small>
+                    </li>
+                  );
+                })}
+              </ul>
+            ) : <p>{gloss(r.detail)}</p>}
+          </li>
+        );
+      })}
     </ol>
   );
 }

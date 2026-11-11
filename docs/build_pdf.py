@@ -88,7 +88,7 @@ def console_section(brief: bool = False) -> str:
 """ if brief else """
 <figure class="wide"><img src="images/console-photo.jpg" alt="The live console on the deployed site"><figcaption>Figure 1. The deployed console (trustnav.vercel.app) photographed on 29 October 2026: Delivery van 04 under a Galileo forgery attack, untrusted for 4 minutes, with the forged track in pink over the real streets of Angers. Later versions add the trust rings, shields and plain-words verdicts shown below.</figcaption></figure>
 <div class="figgrid">
-<figure><img src="images/panel-verdict.png" alt="Vehicle panel with the plain-words verdict"><figcaption>Figure 2. A vehicle's file: the score, the verdict in plain words, the last five minutes, and the evidence.</figcaption></figure>
+<figure><img src="images/panel-verdict.png" alt="Vehicle panel with the plain-words verdict"><figcaption>Figure 2. A vehicle's file: the score, the verdict in plain words, the last five minutes, and the evidence, each unusual measure drawn against its normal range.</figcaption></figure>
 <div class="figcol">
 <figure><img src="images/map-protection.png" alt="Map with refused fixes and shields"><figcaption>Figure 3. The response layer on the map: hollow refused fixes, teal shields where the vehicles really are, and the dashed lies ("8.0 km refused"). The basemap is simplified in this test render.</figcaption></figure>
 <figure><img src="images/kpi-strip.png" alt="Fleet KPI strip"><figcaption>Figure 4. Fleet at a glance.</figcaption></figure>
@@ -97,19 +97,23 @@ def console_section(brief: bool = False) -> str:
 </div>
 <figure class="wide"><img src="images/guide.png" alt="How to read this screen"><figcaption>Figure 6. "How to read this screen", one keypress away inside the console.</figcaption></figure>
 """
-    return md("""
-The live console is the part a jury member sees first, so this section says what each element means in everyday words. The same text is available inside the console by pressing `?`.
+    text = """
+The live console is the part a jury member sees first, so this section says what each element means in everyday words. A shorter version is one keypress away inside the console (`?`).
 
 **What it shows.** Every second, for each van and drone, TrustNav checks whether its satellite position can be believed and gives it a score from 0 (certainly false) to 100 (certainly true). Below 50 it refuses the position and tracks the vehicle by its odometer instead, so nothing downstream acts on a lie.
 
 **The map.** A ring around each vehicle is its trust score drawn as a gauge: green is trusted, amber has minor doubts, orange is suspicious, pink is untrusted. A hollow marker labelled "refused" is the position the receiver claims and TrustNav is not passing on. A teal shield is where TrustNav believes the vehicle really is, worked out from its odometer along its route. The dashed line between them is the lie, with its length; in the teleport attack it is 8 km. The coloured trail is the last 90 seconds of reported positions.
 
-**The panels.** The strip at the top left shows the fleet's average trust, how many vehicles are in each band, the open incidents, and how many positions are being refused with the size of the worst lie. The alerts panel at the top right has one card per incident with the last minute of trust, the action taken (verify or isolate) and a tick to acknowledge it. Clicking any vehicle opens its file: first a verdict in plain words, then the evidence (each line names what was measured and the limit it crossed), then what to do.
+**The panels.** The strip at the top left shows the fleet's average trust, how many vehicles are in each band, the open incidents, and how many positions are being refused with the size of the worst lie. The alerts panel at the top right has one card per incident with the last minute of trust, the action taken (verify or isolate) and a tick to acknowledge it. Clicking any vehicle opens its file: first a verdict in plain words, then the evidence (a rule names what was measured and the limit it crossed; the model shows each unusual measure against its normal range), then what to do.
 
 **The three things that go wrong.** *Jamming*: a noise transmitter drowns the satellites and the receiver loses its position; TrustNav keeps an estimate from the odometer, so the screen never goes blank. *Spoofing*: a transmitter imitates the satellites and feeds a false position, either a jump or a slow drift; TrustNav notices the impossible motion, the too-perfect signal or the drift off the road, and refuses the position. *Forgery*: fake Galileo navigation data; Galileo signs its messages (OSNMA), so the signature fails and the forgery is caught within seconds.
 
-**Presentation mode** (key `P`) makes the camera visit every platform, incidents first, with a caption, for a jury room or a wall screen. **Replay** plays ten recorded attacks with a narrated story. **Results** has the numbers. **Method** explains how it decides and how it differs from existing products.
-""") + figures
+**Presentation mode** (key `P`) makes the camera visit every platform, incidents first, with a caption, for a jury room or a wall screen. **Replay** plays ten recorded attacks with a narrated story. **Results** has the numbers on five tabs, one screen each: overview, each attack, real attacks, real drive, full tables. **Method** explains how it decides, with a fusion lab to try, and how it differs from existing products.
+"""
+    if brief:  # six pages: the short wording
+        text = text.replace("(a rule names what was measured and the limit it crossed; the model shows each unusual measure against its normal range)", "(what was measured, and its limit or normal range)")
+        text = text.replace(" on five tabs, one screen each: overview, each attack, real attacks, real drive, full tables", "").replace(", with a fusion lab to try,", "")
+    return md(text) + figures
 
 
 def _span(seconds: int) -> str:

@@ -3,9 +3,9 @@
 import { useEffect, useState } from "react";
 
 const STEPS = [
-  { title: "Every platform, scored every second", body: "The list on the left ranks the fleet by trust, lowest first. The coloured strip under each name is the last two minutes: green is trusted, red is untrusted." },
-  { title: "Click anything to see why", body: "Select a van on the map or in the list. The panel turns into its file: the trust score, how long it has been in that state, the evidence in plain words, and the raw measurements." },
-  { title: "Watch an attack happen", body: "About a minute and a half in, one van is spoofed. Its trust collapses, an alert opens, and the detail panel names the evidence. The Replay page lets you scrub through every recorded attack." },
+  { title: "Every platform, scored every second", body: "Lowest trust first. The strip under each name is its last two minutes." },
+  { title: "Click anything to see why", body: "A van on the map or in the list opens its file: the score, the verdict in plain words, the evidence." },
+  { title: "Watch an attack happen", body: "About a minute and a half in, one van is spoofed. Replay lets you scrub through every recorded attack." },
 ];
 const KEY = "trustnav-tour-done";
 

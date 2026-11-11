@@ -33,7 +33,7 @@ export default function FusionLab({ ruleWeight, mlWeight }: { ruleWeight: number
     <section className="lab" aria-label="Fusion lab">
       <div className="lab-head">
         <h2>Try it: two witnesses, one verdict</h2>
-        <p>Move the two risks. The combined score uses the weights chosen on validation routes ({ruleWeight} for the rules, {mlWeight} for the model). An average lets one calm witness talk the other down: try a model alarm of 90 while the rules stay silent.</p>
+        <p>Move the two risks, or pick a case. An average lets one calm witness talk the other down.</p>
       </div>
       <div className="lab-body">
         <div className="lab-inputs">

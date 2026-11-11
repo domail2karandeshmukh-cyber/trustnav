@@ -145,8 +145,7 @@ export default function Phone() {
 
       <h1>Your phone as a live receiver</h1>
       <p className="phone-lede">
-        This page sends the phone&apos;s own satellite position once a second. The engine on the laptop scores it like any
-        receiver, and the live console shows this phone moving over the real map with a trust score.
+        This page sends the phone&apos;s own satellite position once a second, and the live console scores it like any receiver.
       </p>
 
       {!secure && <p className="phone-error">Open this page over https; browsers only give the position to secure pages.</p>}
@@ -178,7 +177,7 @@ export default function Phone() {
 
       <section className="phone-card">
         <h2>Simulate an attack on this stream</h2>
-        <p className="phone-hint">Nothing is transmitted. The choice travels with each fix and the engine alters the reported position in software, so the console shows detection and the response on real data.</p>
+        <p className="phone-hint">Nothing is transmitted: the engine alters the reported position in software.</p>
         <div className="phone-overlays" role="radiogroup" aria-label="Attack overlay">
           {OVERLAYS.map((o) => (
             <button key={o.id} className={"phone-overlay" + (overlay === o.id ? " on" : "")} role="radio" aria-checked={overlay === o.id} onClick={() => setOverlay(o.id)}>
@@ -195,7 +194,7 @@ export default function Phone() {
           <li>Here: paste the token, tap <em>Start sending</em>, allow the location, keep the screen on.</li>
           <li>Open <a href="/#live">the live console</a> on any screen: the phone appears as a platform within a few seconds.</li>
         </ol>
-        <p className="phone-hint">A phone gives position, speed and heading but no per-satellite signal strength, clock or Galileo OSNMA, so the physics and route rules do the work; the dual-band board adds the rest.</p>
+        <p className="phone-hint">A phone gives position, speed and heading only, so the motion, route and time rules do the work.</p>
       </section>
     </main>
   );

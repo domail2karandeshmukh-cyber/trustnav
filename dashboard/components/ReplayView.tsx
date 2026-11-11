@@ -157,7 +157,7 @@ export default function ReplayView({ data, initial, theme, onHandle, onScenario,
             <ul className="rows">
               {data.scenarios.map((s) => <ScenarioRow key={s.slug} s={s} data={data} onPick={() => { setSlug(s.slug); setListOpen(false); }} />)}
             </ul>
-            <p className="panel-foot">Held-out routes the model never trained on. Each strip is the whole run; the bracket marks when the simulated attack was active.</p>
+            <p className="panel-foot">Routes the model never trained on. The bracket marks the attack.</p>
           </>
         ) : (
           <div className="detail">
@@ -191,10 +191,10 @@ export default function ReplayView({ data, initial, theme, onHandle, onScenario,
                   : <>An ordinary screen would show the {sc.profile === "small_uav" ? "drone" : "van"} up to <b>{dist(prot.reported_max_error_m)}</b> from where it really was. What the response layer passed on stayed within <b>{dist(prot.protected_max_error_m ?? 0)}</b>.</>}
               </p>
             )}
-            <section className="panel-sec">
-              <h2>Measurements</h2>
+            <details className="panel-sec fold">
+              <summary>Measurements</summary>
               <Signals frame={frame} extra={[["Simulator truth", frame.atk ? "Under attack" : "Clean"]]} />
-            </section>
+            </details>
           </div>
         )}
       </aside>

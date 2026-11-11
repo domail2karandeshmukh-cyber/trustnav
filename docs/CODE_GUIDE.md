@@ -124,6 +124,7 @@ Stack: Next.js 15, React 19, TypeScript, MapLibre GL, supabase-js, self-hosted B
 | `speech.ts` | Browser speech synthesis: voice choice per language (natural voices first, Hindi as the fallback for Marathi), speak with a watchdog, stop |
 | `plain.ts` | The plain-language layer: `plainVerdict` (one or two sentences per platform from the evidence codes and the response), `plainFleet` (the fleet headline) and `gloss` (engineering terms to everyday wording) |
 | `format.ts` | Number, time and status formatting |
+| `useJSON.ts` | Loads one static JSON file from `/data` (the two real-recording result files) |
 | `useTheme.ts`, `useShortcuts.ts`, `useWide.ts` | Dark mode, keyboard shortcuts, responsive layout |
 
 ### `components/`
@@ -135,12 +136,13 @@ Stack: Next.js 15, React 19, TypeScript, MapLibre GL, supabase-js, self-hosted B
 | `MapView.tsx` | MapLibre map: light/dark styles, 3D buildings, markers with a trust ring and score (hollow when the fix is refused), smooth gliding, fading trails, follow camera, the protected path, shield markers with the size of the refused lie and the dashed link to the reported fix, framing of a whole lie on selection |
 | `ReplayView.tsx` | Scenario replay with scrubber, ghost "real position", story mode |
 | `SpaceTime.tsx` | Canvas 4D view: ground grid, time axis, trust-coloured ribbons |
-| `ResultsView.tsx`, `MethodView.tsx` | Evaluation numbers (headline scoreboard, comparison tables, weight grid) and method/limitations; both load lazily |
-| `AttackCheck.tsx` | "On recordings of real attacks" on the Results page: the error of the position a captured phone reports against the error of the position handed on (log scale), the four detectors compared (first alert, captured fixes refused), and three tiles for the u-blox under real jamming and beside the spoofer, read from `public/data/attackcheck.json` |
-| `RealCheck.tsx` | "On a real drive with no attack" on the Results page: the track of the public u-blox drive (fit, calibration, test), false alarms before and after re-calibration, and the three overlaid attacks, read from `public/data/realcheck.json` |
+| `ResultsView.tsx`, `MethodView.tsx` | Two boards of five tabs each, one screen per tab. Results: overview (statement, three readings, comparison bars, three before-and-after doors), each attack (trust strip, first alert, what the response prevented), real attacks, real drive, full tables. Method: the pipeline in one picture, the fusion lab, the sixteen rules with their weights, the comparison with what exists, the fine print. Both load lazily; the open tab is kept in the address (`#results?tab=real-attacks`) |
+| `Tabs.tsx` | `Tabs` (an accessible tab row: arrow keys, Home, End), `TabPanel`, and `Shift`, the before-and-after reading used on the overview doors |
+| `AttackCheck.tsx` | The *Real attacks* tab of Results: the error of the position a captured phone reports against the error of the position handed on (log scale), the four detectors compared (first alert, captured fixes refused), three readings for the u-blox under real jamming and beside the spoofer, and the method notes behind "How this was measured"; data from `public/data/attackcheck.json` |
+| `RealCheck.tsx` | The *Real drive* tab of Results: the track of the public u-blox drive (fit, calibration, test), false alarms before and after re-calibration, and the three overlaid attacks, read from `public/data/realcheck.json` |
 | `FusionLab.tsx` | "Try it" on the Method page: two sliders (rule risk, model risk), the trust an average would give against the noisy-OR fusion with the chosen weights, and whether the fix is accepted or refused |
 | `HeroScene.tsx` | The opening scene on a canvas: the van on its recorded route, the teleport that throws the reported position 8 km away, the trust gauge; geometry in `lib/hero-path.ts` (from the teleport scenario); a still frame under reduced motion |
-| `Instruments.tsx` | Trust tape, trust chart, gauges, the OSNMA line and the response line (accepted / held / isolated, with what to do) |
+| `Instruments.tsx` | Trust tape, trust chart, gauges, the evidence list (a rule in one sentence; the model's unusual measures as rows, each with its value on a track of its normal range), the OSNMA line and the response line (accepted / held / isolated, with what to do) |
 | `Report.tsx` | Per-device incident report (print to PDF) |
 | `Guide.tsx` | "How to read this screen": legend, panels and the three attacks in plain words (`?`) |
 | `Explainer.tsx` | The narrated explainer: scene playback, spotlight on the target panel, caption, language menu, keyboard; drives the live view through `ExplainApi` (fit, select a trusted or a refused platform, open alerts) |
@@ -148,7 +150,7 @@ Stack: Next.js 15, React 19, TypeScript, MapLibre GL, supabase-js, self-hosted B
 
 ### Tests (`dashboard/tests/e2e.py`)
 
-109 Playwright checks: every view, the opening scene and its link-preview image, the results scoreboard, the real-attacks section and the real-drive section, the fusion lab, interactions, keyboard shortcuts, command palette, report, story mode, space-time, the response layer in the replay panel, map and results, the comparison table, the live KPI strip, trust-ring markers, live shields and lie labels, alert sparklines, actions and acknowledgements, the playbook, presentation mode, phone layout, accessibility (axe), and a JavaScript size budget.
+109 Playwright checks: every view, the opening scene and its link-preview image, the Results and Method boards (five tabs each, arrow keys, the overview that fits one screen, the doors, every exhibit and the tables behind them), the fusion lab, interactions, keyboard shortcuts, command palette, report, story mode, space-time, the response layer in the replay panel, map and results, the comparison table, the live KPI strip (and that nothing floating over the map overlaps on a 1280 or 1366 wide screen), trust-ring markers, live shields and lie labels, alert sparklines, actions and acknowledgements, the playbook, presentation mode, phone layout, accessibility (axe), and a JavaScript size budget.
 
 ## Deployment
 

@@ -44,6 +44,7 @@ export default function Console() {
   const [replayErr, setReplayErr] = useState<string | null>(null);
   const [scenario, setScenario] = useState<string | undefined>();
   const [autoStory, setAutoStory] = useState(false);
+  const [tab, setTab] = useState<string | undefined>();
   const [palette, setPalette] = useState(false);
   const [guide, setGuide] = useState(false);
   const [explain, setExplain] = useState(false);
@@ -64,6 +65,7 @@ export default function Console() {
       const params = new URLSearchParams(q ?? "");
       const sc = params.get("scenario");
       if (sc) setScenario(sc);
+      setTab(params.get("tab") ?? undefined);
       if (params.get("story")) setAutoStory(true);
     };
     apply();
@@ -75,9 +77,12 @@ export default function Console() {
     if ((view === "replay" || view === "results") && !replay && !replayErr) {
       getJSON<ReplayData>("/data/replay.json").then(setReplay).catch((e) => setReplayErr(String(e)));
     }
-    const h = view === "replay" && scenario ? `#replay?scenario=${scenario}` : `#${view}`;
+    const paged = view === "results" || view === "method";
+    const h = view === "replay" && scenario ? `#replay?scenario=${scenario}` : paged && tab ? `#${view}?tab=${tab}` : `#${view}`;
     if (window.location.hash !== h) history.replaceState(null, "", h);
-  }, [view, replay, replayErr, scenario]);
+  }, [view, replay, replayErr, scenario, tab]);
+
+  const go = useCallback((v: View) => { setTab(undefined); setView(v); }, []);
 
   const openScenario = useCallback((slug: string, story = false) => { setScenario(slug); setAutoStory(story); setView("replay"); }, []);
   const onLive = useCallback((h: LiveHandle) => {
@@ -88,7 +93,9 @@ export default function Console() {
 
   const commands = useMemo<Command[]>(() => {
     const out: Command[] = [];
-    NAV.forEach(([k, label, , key]) => out.push({ id: `view-${k}`, group: "Pages", title: label, hint: key, run: () => setView(k) }));
+    NAV.forEach(([k, label, , key]) => out.push({ id: `view-${k}`, group: "Pages", title: label, hint: key, run: () => go(k) }));
+    out.push({ id: "real-attacks", group: "Pages", title: "Real attacks", hint: "Results", keywords: "jammertest spoofing jamming recordings real", run: () => { setView("results"); setTab("real-attacks"); } });
+    out.push({ id: "try-fusion", group: "Pages", title: "Try the fusion", hint: "Method", keywords: "lab sliders noisy-or average", run: () => { setView("method"); setTab("try"); } });
     devices.forEach((d) => out.push({
       id: `dev-${d.id}`, group: "Fleet", title: d.name, hint: d.id, keywords: d.kind,
       run: () => { setView("live"); live.current?.select(d.id); },
@@ -105,15 +112,15 @@ export default function Console() {
     out.push({ id: "tour", group: "Settings", title: "Show the welcome tour again", run: () => { resetTour(); setView("live"); location.reload(); } });
     out.push({ id: "intro", group: "Settings", title: "Show the opening screen again", run: () => { resetHero(); window.location.hash = "#live"; location.reload(); } });
     return out;
-  }, [meta, replay, theme, toggle, openScenario, devices]);
+  }, [meta, replay, theme, toggle, openScenario, devices, go, startExplain]);
 
   useShortcuts(useMemo(() => [
     { keys: "mod+k", run: () => setPalette((v) => !v), global: true },
     { keys: "/", run: () => setPalette(true) },
-    { keys: "1", run: () => setView("live") },
-    { keys: "2", run: () => setView("replay") },
-    { keys: "3", run: () => setView("results") },
-    { keys: "4", run: () => setView("method") },
+    { keys: "1", run: () => go("live") },
+    { keys: "2", run: () => go("replay") },
+    { keys: "3", run: () => go("results") },
+    { keys: "4", run: () => go("method") },
     { keys: "d", run: toggle },
     { keys: "f", run: () => { if (view === "live") live.current?.toggleFollow(); } },
     { keys: "r", run: () => { if (view === "live") live.current?.toggleReport(); } },
@@ -128,7 +135,7 @@ export default function Console() {
     { keys: "shift+arrowright", run: () => { if (view === "replay") replayH.current?.step(10); } },
     { keys: "j", run: () => { if (view === "live") live.current?.select((cur) => stepDevice(live.current, cur, 1)); } },
     { keys: "k", run: () => { if (view === "live") live.current?.select((cur) => stepDevice(live.current, cur, -1)); } },
-  ], [palette, view, toggle]), !palette && !explain);
+  ], [palette, view, toggle, go]), !palette && !explain);
 
   const modKey = isMac() ? "⌘" : "Ctrl";
 
@@ -141,7 +148,7 @@ export default function Console() {
             <span>TrustNav</span>
           </a>
           {NAV.map(([k, label, Icon, key]) => (
-            <button key={k} className="nav" aria-current={view === k ? "page" : undefined} onClick={() => setView(k)} title={`${label} (${key})`}>
+            <button key={k} className="nav" aria-current={view === k ? "page" : undefined} onClick={() => go(k)} title={`${label} (${key})`}>
               <Icon size={22} />
               <span>{label}</span>
             </button>
@@ -162,8 +169,8 @@ export default function Console() {
           <div className="view-live" hidden={view !== "live"}><LiveView routes={routes} theme={theme} onHandle={onLive} visible={view === "live"} onGuide={() => setGuide(true)} /></div>
           {view === "replay" && (replay ? <ReplayView key={scenario ?? "default"} data={replay} initial={scenario} theme={theme} onHandle={onReplay} onScenario={setScenario} autoStory={autoStory} />
             : <Loading err={replayErr} what="recorded scenarios" />)}
-          {view === "results" && (meta ? <ResultsView meta={meta} replay={replay} onOpen={openScenario} /> : <Loading what="results" />)}
-          {view === "method" && (meta ? <MethodView meta={meta} /> : <Loading what="method" />)}
+          {view === "results" && (meta ? <ResultsView meta={meta} replay={replay} onOpen={openScenario} tab={tab} onTab={setTab} /> : <Loading what="results" />)}
+          {view === "method" && (meta ? <MethodView meta={meta} tab={tab} onTab={setTab} /> : <Loading what="method" />)}
         </main>
 
         <CommandPalette open={palette} onClose={() => setPalette(false)} commands={commands} />

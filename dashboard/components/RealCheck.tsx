@@ -1,11 +1,10 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import { dist, span } from "@/lib/format";
 
 interface Stats { alert_seconds: number; min_trust?: number }
 interface Side { first_alert_delay_s: number | null; raw_max_error_m: number; protected_max_error_m: number; raw_blank_s: number; protected_blank_s: number }
-interface RealData {
+export interface RealData {
   epochs: number; duration_min: number;
   whole_drive_rules_only: Stats; whole_drive_simulator_model: Stats; whole_drive_cn0_sats_baseline: Stats;
   recalibrated: { fit_seconds: number; calibration_seconds: number; test_seconds: number; test_no_attack: Stats };
@@ -56,11 +55,8 @@ function Track({ track }: { track: NonNullable<RealData["track"]> }) {
   );
 }
 
-/** The detector replayed on a public recording of a real receiver: what transferred, what did not, and what it changed. */
-export default function RealCheck() {
-  const [d, setD] = useState<RealData | null>(null);
-  useEffect(() => { fetch("/data/realcheck.json").then((r) => (r.ok ? r.json() : null)).then(setD).catch(() => setD(null)); }, []);
-  if (!d) return null;
+/** The detector replayed on a public recording of a real receiver with no attack in it. */
+export default function RealCheck({ d }: { d: RealData }) {
   const r = d.recalibrated;
   const simShare = Math.round((100 * d.whole_drive_simulator_model.alert_seconds) / d.epochs);
   const mins = (s: number) => String(Math.floor(s / 6) / 10);          // 513 s reads "8.5", as in the paper
@@ -68,10 +64,7 @@ export default function RealCheck() {
   return (
     <section className="real" aria-labelledby="real-h">
       <h2 id="real-h">On a real drive with no attack</h2>
-      <p>
-        A second public recording, this one with no attack in it: a u-blox ZED-F9K receiver on a {d.duration_min}-minute loop in Mountain View, with a
-        survey-grade reference track of the same drive. It measures false alarms on a real receiver, and what software attacks overlaid on real noise look like.
-      </p>
+      <p className="board-sub">A u-blox receiver on a {d.duration_min}-minute loop in Mountain View, with a survey-grade reference track.</p>
       <div className="real-grid">
         <figure className="real-map">
           {d.track && <Track track={d.track} />}
@@ -84,15 +77,15 @@ export default function RealCheck() {
         <div className="real-facts">
           <div className="real-fact">
             <b style={{ color: "var(--trusted)" }}>{d.whole_drive_rules_only.alert_seconds}</b>
-            <div><strong>false alarms from the rules</strong><span>in the whole drive, lowest trust {d.whole_drive_rules_only.min_trust?.toFixed(0)}. The usual signal-strength check raised {d.whole_drive_cn0_sats_baseline.alert_seconds} s of false alarms on the same drive.</span></div>
+            <div><strong>false alarms from the rules</strong><span>The usual signal-strength check raised {d.whole_drive_cn0_sats_baseline.alert_seconds} s on the same drive.</span></div>
           </div>
           <div className="real-fact">
             <b style={{ color: "var(--untrusted)" }}>{simShare}%</b>
-            <div><strong>of seconds alerted by the simulator-trained model</strong><span>A real receiver is not as quiet as the simulator, so the model has to be re-calibrated on the receiver in use.</span></div>
+            <div><strong>of seconds alerted by the simulator-trained model</strong><span>So the model is re-calibrated on each receiver.</span></div>
           </div>
           <div className="real-fact">
             <b style={{ color: "var(--trusted)" }}>{r.test_no_attack.alert_seconds}</b>
-            <div><strong>alerts after re-calibration</strong><span>Re-calibrated on the first {mins(r.fit_seconds + r.calibration_seconds)} minutes of the drive, the model raises no alert in the remaining {mins(r.test_seconds)} minutes.</span></div>
+            <div><strong>alerts after re-calibration</strong><span>On the last {mins(r.test_seconds)} minutes of the drive.</span></div>
           </div>
         </div>
       </div>
@@ -113,12 +106,18 @@ export default function RealCheck() {
           );
         })}
       </div>
-      <p className="note">
-        Recording: Google gps-measurement-tools (Apache-2.0), u-blox ZED-F9K with a NovAtel SPAN reference, February 2020. The attacks are overlaid in software on the last
-        segment; nothing is transmitted. The reference track stands in for the assigned route and its speed for the odometer, so the protected errors are the best case.
-        This recording has no pseudorange residuals, clock, jamming indicator or OSNMA. It also exposed two weaknesses that are now fixed: tail scores that saturated on extreme
-        values, and a hold that released after sixty clean seconds while the fix was still kilometres away.
-      </p>
+      <details className="fine">
+        <summary>How this was measured</summary>
+        <p>
+          Recording: Google gps-measurement-tools (Apache-2.0), u-blox ZED-F9K with a NovAtel SPAN reference, February 2020. The rules raised no alert in the whole drive (lowest trust {d.whole_drive_rules_only.min_trust?.toFixed(0)});
+          the model was re-calibrated on the first {mins(r.fit_seconds + r.calibration_seconds)} minutes and tested on the rest.
+        </p>
+        <p>
+          The three attacks are overlaid in software on the last segment; nothing is transmitted. The reference track stands in for the assigned route and its speed for the odometer, so the protected errors are the best case.
+          This recording has no pseudorange residuals, clock, jamming indicator or OSNMA. It also exposed two weaknesses that are now fixed: tail scores that saturated on extreme
+          values, and a hold that released after sixty clean seconds while the fix was still kilometres away.
+        </p>
+      </details>
     </section>
   );
 }

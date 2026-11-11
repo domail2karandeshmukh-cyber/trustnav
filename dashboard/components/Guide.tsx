@@ -23,29 +23,28 @@ export default function Guide({ onClose, onStory, onPresent, onExplain }: { onCl
         </div>
 
         <p className="guide-lede">
-          Every second, for each van and drone, TrustNav checks whether its satellite position can be believed and gives it a score
-          from <b>0</b> (certainly false) to <b>100</b> (certainly true). Below <b>50</b> it refuses the position and tracks the vehicle by its
-          odometer instead, so nothing downstream acts on a lie.
+          Every second, each van and drone gets a score from <b>0</b> (certainly false) to <b>100</b> (certainly true).
+          Below <b>50</b> the position is refused and the vehicle is tracked by its odometer.
         </p>
 
         <div className="guide-cols">
           <section>
             <h3>The map</h3>
             <ul className="guide-legend">
-              <li><i className="g-ring" style={{ borderColor: STATUS_COLOR.TRUSTED }} /><span><b>Ring around a vehicle</b>: its trust score, drawn as a gauge. Green is trusted, amber has minor doubts, orange is suspicious, pink is untrusted.</span></li>
-              <li><i className="g-ring hollow" style={{ borderColor: STATUS_COLOR.UNTRUSTED }} /><span><b>Hollow marker, "refused"</b>: the position the receiver claims. TrustNav is not passing it on.</span></li>
-              <li><i className="g-shield" /><span><b>Teal shield</b>: where TrustNav believes the vehicle really is, worked out from its odometer along its route.</span></li>
-              <li><i className="g-dash" /><span><b>Dashed line between them</b>: the lie, with its length. In the teleport attack it is 8 km.</span></li>
-              <li><i className="g-trail" /><span><b>Coloured trail</b>: the last 90 seconds of reported positions, coloured by trust.</span></li>
+              <li><i className="g-ring" style={{ borderColor: STATUS_COLOR.TRUSTED }} /><span><b>Ring around a vehicle</b>: its trust score as a gauge, from green to pink.</span></li>
+              <li><i className="g-ring hollow" style={{ borderColor: STATUS_COLOR.UNTRUSTED }} /><span><b>Hollow marker, "refused"</b>: the position the receiver claims, not passed on.</span></li>
+              <li><i className="g-shield" /><span><b>Teal shield</b>: where the vehicle really is, from its odometer along its route.</span></li>
+              <li><i className="g-dash" /><span><b>Dashed line between them</b>: the lie, with its length.</span></li>
+              <li><i className="g-trail" /><span><b>Coloured trail</b>: the last 90 seconds, coloured by trust.</span></li>
             </ul>
           </section>
           <section>
             <h3>The panels</h3>
             <ul className="guide-legend">
-              <li><i className="g-num">76</i><span><b>Fleet trust</b> (top left): the average score, with the share of vehicles in each band.</span></li>
-              <li><i className="g-badge">ISOLATED</i><span><b>Alerts</b> (top right): one card per incident, with the last minute of trust, the action taken, and a tick to acknowledge it.</span></li>
-              <li><i className="g-text">Why</i><span><b>Click any vehicle</b>: first a verdict in plain words, then the evidence (each line names what was measured and the limit it crossed), then what to do.</span></li>
-              <li><i className="g-text">1 2 3 4</i><span><b>Pages</b>: Live is now; Replay plays ten recorded attacks; Results has the numbers; Method explains how it decides.</span></li>
+              <li><i className="g-num">76</i><span><b>Fleet trust</b> (top left): the average score and the share in each band.</span></li>
+              <li><i className="g-badge">ISOLATED</i><span><b>Alerts</b> (top right): one card per incident, with the action taken.</span></li>
+              <li><i className="g-text">Why</i><span><b>Click any vehicle</b>: the verdict in plain words, the evidence, what to do.</span></li>
+              <li><i className="g-text">1 2 3 4</i><span><b>Pages</b>: Live is now, Replay plays ten recorded attacks, Results has the numbers, Method explains.</span></li>
             </ul>
           </section>
         </div>
@@ -53,9 +52,9 @@ export default function Guide({ onClose, onStory, onPresent, onExplain }: { onCl
         <section>
           <h3>The three things that go wrong</h3>
           <div className="guide-attacks">
-            <div><b>Jamming</b><span>A noise transmitter drowns the satellites. The receiver loses its position. TrustNav keeps an estimate from the odometer, so the screen never goes blank.</span></div>
-            <div><b>Spoofing</b><span>A transmitter imitates the satellites and feeds a false position, either a jump or a slow drift. TrustNav notices the impossible motion, the too-perfect signal, or the drift off the road, and refuses the position.</span></div>
-            <div><b>Forgery</b><span>Fake Galileo navigation data. Galileo signs its messages (OSNMA), so the signature fails and the forgery is caught within seconds.</span></div>
+            <div><b>Jamming</b><span>Noise drowns the satellites and the receiver loses its position. TrustNav keeps an estimate from the odometer.</span></div>
+            <div><b>Spoofing</b><span>A transmitter imitates the satellites and feeds a false position. TrustNav notices the impossible motion or the drift off the road, and refuses it.</span></div>
+            <div><b>Forgery</b><span>Fake Galileo data. Galileo signs its messages, so the signature fails within seconds.</span></div>
           </div>
         </section>
 
