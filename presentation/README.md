@@ -6,7 +6,8 @@ Ten slides for the oral examination (Group 2, 13 November 2026), with speaker no
 |---|---|
 | `TrustNav_oral_deck.pptx` | the deck, with the speaker notes on every slide (PowerPoint: View, Notes page) |
 | `TrustNav_oral_deck.pdf` | the same ten slides as a PDF, for a room without PowerPoint |
-| `TrustNav_speaker_notes.pdf` | printable booklet: running order and timing, one page per slide with its script, and likely questions with short answers |
+| `TrustNav_speaker_notes.pdf` | printable booklet: running order and timing, the talk on one page, what the jury marks and where it is answered, one page per slide with its script, and likely questions with short answers |
+| `TrustNav_talk_on_one_page.pdf` | the talk on one page, to keep on a phone |
 
 Every number on the slides is taken from the paper (`paper/trustnav.pdf`) and from the data the engine
 exports (`dashboard/public/data/meta.json`, `paper/figures/analysis.json`, `paper/figures/realcheck.json`,

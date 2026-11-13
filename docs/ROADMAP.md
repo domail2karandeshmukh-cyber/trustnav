@@ -4,7 +4,7 @@ The tutor's questions: *can it be improved more?* and *does it prevent attacks o
 
 **Prevention, honestly.** No software can stop a jammer or a spoofer from transmitting; only antenna hardware mitigates at the radio level. What software *can* prevent is the damage: a fleet system acting on a false position. Since this version (engine 2.1) TrustNav does that with a **response layer** (`engine/trustnav_engine/safeguard.py`): a fix below the trust line is refused, the position handed downstream is estimated from the odometer along the planned route, and the operator receives an action (continue, verify, isolate). Measured on the held-out attacks, the worst position an ordinary screen would show was 8.0 km off; what the response layer passed on was never more than 29 m off, and during the 100 s jamming outage the screen never went blank. That is the prevention story today. Everything below makes it stronger.
 
-## Phase 2: real receiver (next two weeks)
+## Phase 2: real receiver (next)
 
 | # | Step | Why | Effort |
 |---|---|---|---|
