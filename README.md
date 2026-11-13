@@ -7,7 +7,7 @@
 
 **Live demo:** https://trustnav.vercel.app (press `?` for "How to read this screen", `P` for presentation mode)
 
-![The TrustNav console: Delivery van 04 under a Galileo forgery attack over the streets of Angers](docs/images/console-photo.jpg)
+![The TrustNav console during the recorded demonstration: two vehicles cannot be believed and their reported positions are refused](docs/images/console.png)
 
 ## In plain words
 

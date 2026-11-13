@@ -98,7 +98,7 @@ def body_without_title(path: Path) -> str:
 
 def console_section(brief: bool = False) -> str:
     figures = """
-<figure class="wide"><img src="images/console-photo.jpg" alt="The live console on the deployed site"><figcaption>Figure 1. The deployed console (trustnav.vercel.app) photographed on 29 October 2026: Delivery van 04 under a Galileo forgery attack, untrusted for 4 minutes, with the forged track in pink over the real streets of Angers.</figcaption></figure>
+<figure class="wide"><img src="images/console.png" alt="The live console during an attack"><figcaption>Figure 1. The live console during the recorded demonstration: two of seven vehicles cannot be believed, their reported positions are refused (the dashed lines are the lies, 8.0 km for Delivery van 03), and the alerts say what was done. The basemap is simplified in this render; the live site shows the streets of Angers.</figcaption></figure>
 <div class="figgrid">
 <figure><img src="images/panel-verdict.png" alt="Vehicle panel with the plain-words verdict"><figcaption>Figure 2. A vehicle's file: the score, the verdict in plain words, the last five minutes, and the evidence.</figcaption></figure>
 <div class="figcol">
@@ -107,7 +107,7 @@ def console_section(brief: bool = False) -> str:
 </div>
 </div>
 """ if brief else """
-<figure class="wide"><img src="images/console-photo.jpg" alt="The live console on the deployed site"><figcaption>Figure 3. The deployed console (trustnav.vercel.app) photographed on 29 October 2026: Delivery van 04 under a Galileo forgery attack, untrusted for 4 minutes, with the forged track in pink over the real streets of Angers. Later versions add the trust rings, shields and plain-words verdicts shown below.</figcaption></figure>
+<figure class="wide"><img src="images/console.png" alt="The live console during an attack"><figcaption>Figure 3. The live console during the recorded demonstration: two of seven vehicles cannot be believed, their reported positions are refused (the dashed lines are the lies, 8.0 km for Delivery van 03), and the alerts say what was done. The basemap is simplified in this render; the live site shows the streets of Angers.</figcaption></figure>
 <div class="figgrid">
 <figure><img src="images/panel-verdict.png" alt="Vehicle panel with the plain-words verdict"><figcaption>Figure 4. A vehicle's file: the score, the verdict in plain words, the last five minutes, and the evidence, each unusual measure drawn against its normal range.</figcaption></figure>
 <div class="figcol">

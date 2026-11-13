@@ -573,7 +573,7 @@ function StatusStrip({ fleet, counts, timeline, onTimeline, present, onPresent, 
   const label = fleet.source === "live" ? "Live from the cloud" : fleet.source === "loop" ? "Recorded demo, looping" : "Connecting";
   return (
     <div className="float strip">
-      <button className={`src ${fleet.source}`} onClick={() => setHealth((v) => !v)} aria-expanded={health} title="System health"><i />{fleet.source === "loop" ? <>Recorded demo<span className="src-more">, looping</span></> : label}</button>
+      <button className={`src ${fleet.source}`} onClick={() => setHealth((v) => !v)} aria-expanded={health} title="System health"><i /><span>{fleet.source === "loop" ? <>Recorded demo<span className="src-more">, looping</span></> : label}</span></button>
       {health && (
         <div className="pop health" role="dialog" aria-label="System health">
           <div className="pop-head"><b>System health</b><button className="iconbtn" onClick={() => setHealth(false)} aria-label="Close"><IconClose size={16} /></button></div>
