@@ -98,8 +98,8 @@ with `rule_weight = 0.6` and `ml_weight = 0.8`, chosen on **validation routes** 
 
 Why not just average? Averaging a confident ML alarm (90) with a quiet rule score (20) gives 55, weaker than the ML evidence alone. Noisy-OR treats the two as independent witnesses: either can raise the alarm, and both together are stronger.
 
-Worked example from the screenshot: rules 70, model 100 →
-`1 − (1 − 0.6·0.70)(1 − 0.8·1.00) = 1 − 0.58·0.20 = 0.884` → risk **88** → trust **12**.
+Worked example, Delivery van 03 during the teleport attack: rules 56, model 100 →
+`1 − (1 − 0.6·0.56)(1 − 0.8·1.00) = 1 − 0.664·0.20 = 0.867` → risk **87** → trust **13**.
 
 Trust bands:
 
@@ -185,8 +185,8 @@ The simulator is deterministic (seeded), so every result can be reproduced exact
 
 Two more commands leave the simulator and replay public recordings of real receivers through the same adapter and detector:
 
-- `realcheck.py`: a clean 27.6-minute drive of a u-blox ZED-F9K with a survey-grade reference. It measures false alarms on a real receiver (none from the rules), shows that the simulator-trained model must be re-calibrated on the receiver in use, and overlays software attacks on real noise.
-- `attackcheck.py`: recordings of **real jamming and spoofing** made in a car at Jammertest 2024 (VAARA dataset, University of Vaasa). A phone was captured by a spoofer for 26.5 minutes; the fifteen rules first published alerted after 21 min 49 s and refused 5 of 909 captured fixes. With `R_TIME_JUMP` the alert comes in the same second and all 909 are refused, with no alert in the clean periods. A u-blox driven past real jammers is alerted in 15 of 20 exposures by the re-calibrated hybrid and in 1 of 20 by the rules alone, because its NMEA stream carries no jamming indicator. The files are downloaded on demand (SHA-256 checked) and never stored in the repository.
+- `realcheck.py`: a clean 27.6-minute drive of a u-blox ZED-F9K with a survey-grade reference. It measures false alarms on a real receiver (none from the rules), shows that the model must be re-calibrated on the receiver in use, and overlays software attacks on real noise.
+- `attackcheck.py`: recordings of **real jamming and spoofing** made in a car at Jammertest 2024 (VAARA dataset, University of Vaasa): a u-blox driven past real jammers, and a phone captured by a spoofer for 26.5 minutes, which the fifteen rules first published missed for 21 min 49 s and `R_TIME_JUMP` refuses in the same second. The files are downloaded on demand (SHA-256 checked), never stored in the repository.
 
 ## Run it yourself
 

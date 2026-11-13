@@ -85,7 +85,7 @@ figcaption {{ font-size: 8.8pt; color: #4a5a72; margin-top: 3px; }}
 <tr><td>Method, The 16 rules</td><td>Every rule with its threshold and its weight</td></tr>
 <tr><td>Source code</td><td><a href="{REPO}">github.com/domail2karandeshmukh-cyber/trustnav</a>: engine, cloud side, console, tests, paper and report</td></tr>
 </table>
-<p class="note">The paper (six pages, in English and in French), the report (46 pages), a six-page summary and the slides are sent with this guide. Our own attacks are simulated in software and the real ones are recordings made by others: nothing is ever transmitted.</p>
+<p class="note">The paper (six pages, in English and in French), the report (44 pages), a six-page summary and the slides are sent with this guide. Our own attacks are simulated in software and the real ones are recordings made by others: nothing is ever transmitted.</p>
 </div>
 </body></html>"""
     out_html = HERE / "_guide.html"

@@ -40,10 +40,10 @@ TrustNav does not replace the receiver. It sits next to it and acts as a second 
 
 1. **Explainable.** Every score comes with named reasons and the exact value and threshold that triggered it, so an analyst can check an alert by hand.
 2. **Hybrid.** Three kinds of evidence work together, because each misses something the others catch:
-   - *Rules*: physical limits that are impossible to break (speed, jump distance, acceleration).
-   - *Machine learning*: spots strange combinations that no single rule was written for.
-   - *Galileo OSNMA*: cryptographic authentication supplied by the satellites.
-3. **Few false alarms.** An operator who is alerted constantly stops listening. Normal data in our tests produces a false alarm rate of 0.44%.
+    - *Rules*: physical limits that are impossible to break (speed, jump distance, acceleration).
+    - *Machine learning*: spots strange combinations that no single rule was written for.
+    - *Galileo OSNMA*: cryptographic authentication supplied by the satellites.
+3. **Few false alarms.** An operator who is alerted constantly stops listening. Normal data in our tests produces a false alarm rate of 0.44 %.
 4. **Responds, not only reports.** A fix the engine does not believe is refused; the position handed to dispatch, geofencing or flight control is estimated from the odometer along the route, and the operator gets an action: continue, verify or isolate.
 5. **Same code for demo and real life.** The demo runs through the exact detector a real receiver would use, and the receiver adapter already speaks NMEA and u-blox UBX.
 6. **Safe.** Our own attacks are simulated in software; the real ones are recordings made by others. No radio signal is ever transmitted.

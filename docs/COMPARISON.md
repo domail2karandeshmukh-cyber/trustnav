@@ -9,6 +9,7 @@ Facts below were checked on 3 November 2026 against the sources listed. Where a 
 ## 1. Detection inside the receiver chip
 
 **u-blox** (the chips in most trackers, drones and cheap USB receivers) report a *spoofing state* (0 unknown, 1 none, 2 indicated, 3 multiple indications) and a *jamming state* to the host. Newer firmware (ZED-F9P HPG 1.50, July 2024) adds a jamming log, Galileo OSNMA and per-band flags.
+
 - Runs inside the chip. Covers jamming and spoofing. One receiver only. No explanation: the output is a state code, and u-blox notes that state 1 "does not prove the receiver is not spoofed". The method depends on first locking to genuine signals; a receiver that starts inside a spoofed field may never notice. At Jammertest 2025 a u-blox receiver raised both jamming *and* spoofing flags during a jamming-only run.
 - Typical boards: NEO-M9N about 60 to 70 EUR, ZED-F9P about 190 to 280 EUR (third-party shops).
 
@@ -82,7 +83,7 @@ Recent papers use machine learning on receiver observables (C/N0, pseudorange re
 ## Sources
 
 - u-blox: ZED-F9P HPG 1.50 release notes (https://content.u-blox.com/sites/default/files/documents/ZED-F9P_FW100HPG150_RN_UBXDOC-963802114-12826.pdf); NEO-M9N product summary; Jammertest 2025 blog (https://www.u-blox.com/en/blogs/tech/gnss-jamming-spoofing-detection-jammertest-2025-andoya); GPSPatron u-blox test (https://gpspatron.com/ublox-m8t-gps-spoofing-test); gnss.store prices.
-- Septentrio AIM+: https://www.septentrio.com/en/learn-more/advanced-positioning-technology/aim-spoofing-protection and the Jammertest 2025 results page.
+- Septentrio AIM+: https://www.septentrio.com/en/learn-more/advanced-positioning-technology/aim-anti-spoofing-protection and the Jammertest 2025 results page.
 - GPSPatron: https://gpspatron.com/detecting-gnss-threats/ , https://gpspatron.com/gp-cloud , GP-Probe TGE2 datasheet.
 - infiniDome: Honeywell GPSdome page; GPS World on GPSdome 2 (https://www.gpsworld.com/infinidome-releases-gpsdome-2-dual-band-anti-jamming-technology/).
 - Regulus Cyber: Inside GNSS (https://insidegnss.com/?p=181662), GPS World, CB Insights, regulus.com.

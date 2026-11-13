@@ -8,8 +8,8 @@ trustnav/
 ├── docs/                          this documentation
 ├── engine/                        Python detection engine
 │   ├── requirements.txt           numpy, scikit-learn, joblib, pytest
-│   ├── models/current/            trained model (model.joblib, model.json) + chosen fusion weights (fusion.json)
-│   ├── tests/                     42 automated tests (engine, response layer, receiver adapter, phone, time, real recordings)
+│   ├── models/current/            trained model and the chosen fusion weights
+│   ├── tests/                     42 automated tests, listed below
 │   └── trustnav_engine/
 ├── dashboard/                     Next.js web app
 │   ├── app/                       page shell, global styles, icon
@@ -29,7 +29,7 @@ trustnav/
 |---|---|---|
 | `config.py` | 121 | **All** thresholds and weights in one place so a reviewer can question each one. Platform profiles (`ROAD_VEHICLE`: 60 m/s, 8 m/s², 90 °/s, 250 m jump; `SMALL_UAV`), `RuleSettings`, `FusionSettings`, `TrustBands`, `IncidentSettings` |
 | `geo.py` | 53 | Geodesy helpers: `haversine_m` (distance), `bearing_deg`, `offset`, `angle_diff_deg`, `LocalFrame` (lat/lon to metres) |
-| `routes.py` | 200 | `Route` class: a polyline the vehicle should follow, with `distance_to()` and `project()` (arc-length position, direction- and continuity-aware where the road doubles back). Road routes were computed with OSRM on OpenStreetMap data and stored in `data/routes.json`. Each route has one **role**: train, validation or held-out |
+| `routes.py` | 207 | `Route` class: a polyline the vehicle should follow, with `distance_to()` and `project()` (arc-length position, direction- and continuity-aware where the road doubles back). Road routes were computed with OSRM on OpenStreetMap data and stored in `data/routes.json`. Each route has one **role**: train, validation or held-out |
 | `simulator.py` | 269 | Deterministic synthetic observations (seeded). Normal driving with stops, corners and urban-canyon dips, plus attack overlays: `teleport`, `drift`, `signal`, `stealth_drift`, `osnma_forgery`, `jamming`, `drone_drift`. Every observation carries a ground-truth `attack` label. **Nothing is transmitted** |
 | `scenarios.py` | 95 | Catalogue: `training_specs` (normal only), `validation_specs`, `heldout_specs` (the 10 demo scenarios), `FLEET_DEVICES` and `fleet_specs` (the 7-platform live demo) |
 | `features.py` | 295 | `FeatureExtractor.update(obs)`: 36 features over a 5-observation rolling window, plus context. `_time()` keeps the trusted clock: elapsed time is counted on the host clock when there is one, otherwise on receiver time while it runs forward, and the difference is reported as `time_jump_s`. `MODEL_FEATURES` is the 19 used by the model |
@@ -54,7 +54,7 @@ reasons, rule_risk, critical = evaluate(f, ctx, ...)    # 2. rules
 ml = median(self.ml_hist)                               # 3. model risk (3 s trailing median)
 hybrid = fuse(rule_risk, ml, st.fusion, critical, floor)  # 4. noisy-OR fusion
 trust = 100.0 - hybrid                                  # 5. trust score
-frame["resp"] = self.safeguard.update(frame, o, clock)  # 6. response: accept or hold, protected position, action
+frame["resp"] = self.safeguard.update(frame, o, clock)  # 6. response: accept or hold
 events = self.incidents.update(frame)                   # 7. open / update / resolve incidents
 return frame, events
 ```
@@ -166,9 +166,15 @@ The adapter is written and tested; only the hardware is missing.
 ```bash
 cd engine
 python -m pip install pyserial
-python -m trustnav_engine.receiver --port /dev/ttyACM0 --device VAN-REAL --name "Real van" --no-model --dry-run   # first look
+
+# first look
+python -m trustnav_engine.receiver --port /dev/ttyACM0 --device VAN-REAL --name "Real van" \
+    --no-model --dry-run
+
+# then live, recording everything for calibration
 set -a; source .env.local; set +a
-python -m trustnav_engine.receiver --port /dev/ttyACM0 --device VAN-REAL --name "Real van" --no-model --jsonl drive1.jsonl
+python -m trustnav_engine.receiver --port /dev/ttyACM0 --device VAN-REAL --name "Real van" \
+    --no-model --jsonl drive1.jsonl
 ```
 
 The dashboard shows it as a real device (run mode `receiver`) next to the simulated ones. `--no-model` is deliberate: the model's "normal" is the simulator's; after a few recorded drives the thresholds and the model are re-calibrated on the real receiver (see `ROADMAP.md`).

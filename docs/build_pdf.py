@@ -61,14 +61,41 @@ def ref(name: str) -> str:
 LINK_NAMES = {src: ref(t) for _, t, src in SECTIONS if src}
 
 
+UNITS = r"dB-Hz|m/s²|m/s|ns/s|°/s|km|min|EUR|dB|ms|ns|m|s|h|%"
+
+
+def _prose(text: str) -> str:
+    """Outside code: a bare web address becomes a link (and keeps its underscores), and a number stays with its unit."""
+    def link(m: re.Match) -> str:
+        url = m.group(0).rstrip(".,;:")
+        shown = re.sub(r"(?<=[^/:])/(?=[^/])", "/<wbr>", url).replace("_", "\\_")     # may break after a slash
+        return f'<a href="{url}">{shown}</a>{m.group(0)[len(url):]}'
+    text = re.sub(r"(?<![\w<\"'=/])(?<!\]\()https?://[^\s<>()\[\]|\"'`]+", link, text)
+    return re.sub(rf"(?<=\d) (?=(?:{UNITS})(?![A-Za-z/]))", "\u00a0", text)
+
+
+def _outside_code(text: str, fn) -> str:
+    """Apply `fn` to the markdown outside fenced blocks and inline code."""
+    out = []
+    for i, block in enumerate(re.split(r"(^```.*?^```[ \t]*$)", text, flags=re.S | re.M)):
+        if i % 2:
+            out.append(block)
+        else:
+            out.append("".join(seg if j % 2 else fn(seg) for j, seg in enumerate(re.split(r"(`[^`\n]*`)", block))))
+    return "".join(out)
+
+
 def md(text: str) -> str:
     # [[Results]] becomes "section 8"; links to sibling docs become section references; the rest renders as usual
     cap = lambda r: r[0].upper() + r[1:]
     text = re.sub(r"(?m)(^|\|[ \t]*)\[\[([^\]]+)\]\]", lambda m: m.group(1) + cap(ref(m.group(2))), text)   # at the start of a line or a table cell
     text = re.sub(r"\[\[([^\]]+)\]\]", lambda m: ref(m.group(1)), text)
     text = re.sub(r"\[([^\]]+)\]\((?:docs/)?([A-Z_]+\.md)\)", lambda m: f"{m.group(1)} ({LINK_NAMES.get(m.group(2), m.group(2))})", text)
-    text = re.sub(r"`([A-Z_]+\.md)`", lambda m: f"{m.group(1)} ({LINK_NAMES.get(m.group(1), '')})".replace(" ()", ""), text)
-    return markdown.markdown(text, extensions=["tables", "fenced_code", "sane_lists"])
+    text = re.sub(r"`([A-Z_]+\.md)`", lambda m: LINK_NAMES.get(m.group(1)) or m.group(0), text)   # a sibling document is a section of this one
+    text = _outside_code(text, _prose)
+    html = markdown.markdown(text, extensions=["tables", "fenced_code", "sane_lists"])
+    # a flag such as --no-model is never cut after its dashes
+    return re.sub(r"(?<!<pre>)<code>([^<]*)</code>", lambda m: "<code>" + re.sub(r"(--[A-Za-z][\w-]*)", r'<span class="nb">\1</span>', m.group(1)) + "</code>", html)
 
 
 # Sections that the standalone markdown files need but the single document already has elsewhere.
@@ -102,16 +129,16 @@ def console_section(brief: bool = False) -> str:
 <div class="figgrid">
 <figure><img src="images/panel-verdict.png" alt="Vehicle panel with the plain-words verdict"><figcaption>Figure 2. A vehicle's file: the score, the verdict in plain words, the last five minutes, and the evidence.</figcaption></figure>
 <div class="figcol">
-<figure><img src="images/map-protection.png" alt="Map with refused fixes and shields"><figcaption>Figure 3. The response layer on the map: hollow refused fixes, teal shields where the vehicles really are, and the dashed lies ("8.0 km refused"). The basemap is simplified in this test render.</figcaption></figure>
+<figure><img src="images/map-protection.png" alt="Map with refused fixes and shields"><figcaption>Figure 3. The response layer on the map: hollow refused fixes, teal shields where the vehicles really are, and the dashed lies ("8.0 km refused"). The basemap is simplified in this render.</figcaption></figure>
 <figure><img src="images/kpi-strip.png" alt="Fleet KPI strip"><figcaption>Figure 4. Fleet at a glance.</figcaption></figure>
 </div>
 </div>
 """ if brief else """
-<figure class="wide"><img src="images/console.png" alt="The live console during an attack"><figcaption>Figure 3. The live console during the recorded demonstration: two of seven vehicles cannot be believed, their reported positions are refused (the dashed lines are the lies, 8.0 km for Delivery van 03), and the alerts say what was done. The basemap is simplified in this render; the live site shows the streets of Angers.</figcaption></figure>
+<figure class="wide lead"><img src="images/console.png" alt="The live console during an attack"><figcaption>Figure 3. The live console during the recorded demonstration: two of seven vehicles cannot be believed, their reported positions are refused (the dashed lines are the lies, 8.0 km for Delivery van 03), and the alerts say what was done. The basemap is simplified in this render; the live site shows the streets of Angers.</figcaption></figure>
 <div class="figgrid">
 <figure><img src="images/panel-verdict.png" alt="Vehicle panel with the plain-words verdict"><figcaption>Figure 4. A vehicle's file: the score, the verdict in plain words, the last five minutes, and the evidence, each unusual measure drawn against its normal range.</figcaption></figure>
 <div class="figcol">
-<figure><img src="images/map-protection.png" alt="Map with refused fixes and shields"><figcaption>Figure 5. The response layer on the map: hollow refused fixes, teal shields where the vehicles really are, and the dashed lies ("8.0 km refused"). The basemap is simplified in this test render.</figcaption></figure>
+<figure><img src="images/map-protection.png" alt="Map with refused fixes and shields"><figcaption>Figure 5. The response layer on the map: hollow refused fixes, teal shields where the vehicles really are, and the dashed lies ("8.0 km refused"). The basemap is simplified in this render.</figcaption></figure>
 <figure><img src="images/kpi-strip.png" alt="Fleet KPI strip"><figcaption>Figure 6. Fleet at a glance.</figcaption></figure>
 <figure class="half"><img src="images/alerts.png" alt="Alert cards"><figcaption>Figure 7. Alert cards with sparklines, the action taken and acknowledgement.</figcaption></figure>
 </div>
@@ -443,6 +470,8 @@ def section_pages(pdf: Path) -> dict:
     return pages
 
 
+REPORT_SCALE = 0.881   # the full report is set a little smaller than the summary (9.3 pt instead of 10.6 pt)
+
 GUIDE = [  # what a reader looks for, and where it is
     ("The subject, the objectives, who it is for", ["Objectives"]),
     ("The requirements (cahier des charges)", ["Requirements"]),
@@ -500,7 +529,8 @@ h1 .n {{ display: inline-block; min-width: 1.6em; color: #1f5fbf; }}
 h2 {{ font-size: 15pt; color: #1f5fbf; }}
 h3 {{ font-size: 12pt; }}
 p {{ margin: .45em 0 .75em; }}
-a {{ color: #1f5fbf; text-decoration: none; }}
+a {{ color: #1f5fbf; text-decoration: none; overflow-wrap: anywhere; }}
+.nb {{ white-space: nowrap; }}
 code {{ font: 9.2pt/1.4 "SFMono-Regular", Menlo, Consolas, monospace; background: #f2f4f7; padding: 1px 4px; border-radius: 3px; }}
 pre {{ font: 8.6pt/1.4 Menlo, Consolas, monospace; background: #f2f4f7; padding: 10px 12px; border-radius: 6px; overflow: hidden; white-space: pre-wrap; page-break-inside: avoid; }}
 pre code {{ background: none; padding: 0; font-size: inherit; }}
@@ -543,6 +573,7 @@ figcaption {{ font-size: 9pt; color: #4a5a72; margin-top: 5px; }}
 .figgrid figure {{ margin: 0; }}
 .figcol {{ display: flex; flex-direction: column; gap: 12px; }}
 .half img {{ width: 62%; }}
+.lead img {{ display: block; width: 86%; margin: 0 auto; }}
 .footer {{ font-size: 8pt; color: #5f6c84; }}
 .cover.compact {{ height: auto; display: block; padding-bottom: 18px; border-bottom: 2px solid #14233b; margin-bottom: 8px; }}
 .cover.compact h1 {{ font-size: 30pt; }}
@@ -584,7 +615,8 @@ body.brief .figgrid {{ page-break-before: auto; }}
 {parts}
 </body></html>"""
         if brief:
-            page = page.replace('<div class="kicker">Technical project report</div>', '<div class="kicker">Project brief</div>')
+            page = page.replace('<div class="kicker">Technical project report</div>', '<div class="kicker">Project summary</div>')
+            page = page.replace("<title>TrustNav technical report</title>", "<title>TrustNav project summary</title>")
             # no contents page, sections flow, compact cover
             page = re.sub(r'<section class="sec toc">.*?</section>', "", page, flags=re.S)
             page = page.replace('<div class="cover">', '<div class="cover compact">').replace("<body>", '<body class="brief">')
@@ -604,9 +636,9 @@ body.brief .figgrid {{ page-break-before: auto; }}
             pg.goto(out_html.as_uri(), wait_until="load")
             pg.wait_for_timeout(500)
             pg.pdf(path=str(out_pdf), format="A4", print_background=True, prefer_css_page_size=True, display_header_footer=True,
-                   header_template="<div></div>",
+                   scale=1 if brief else REPORT_SCALE, header_template="<div></div>",
                    footer_template='<div style="width:100%;font:8pt Barlow,Arial,sans-serif;color:#5f6c84;padding:0 16mm;display:flex;justify-content:space-between;">'
-                                   f'<span>TrustNav {"project brief" if brief else "technical report"} · Group 2, ESAIP Angers</span><span class="pageNumber"></span></div>')
+                                   f'<span>TrustNav {"project summary" if brief else "technical report"} · Group 2, ESAIP Angers</span><span class="pageNumber"></span></div>')
             b.close()
         out_html.unlink()
 

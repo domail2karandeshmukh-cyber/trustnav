@@ -19,7 +19,7 @@
 
 ## Documentation
 
-**Start here:** [docs/TrustNav_Project_Brief.pdf](docs/TrustNav_Project_Brief.pdf) (6 pages: what, how to read the console, results, what comes next, the team). The project report is [docs/TrustNav_Technical_Documentation.pdf](docs/TrustNav_Technical_Documentation.pdf) (46 pages, everything below in one file: abstract in English and French, contents with page numbers, the requirements, the approach and the choices, how it works, results, critical review, project management, three annexes). Both are built from this folder with `python3 docs/build_pdf.py`.
+**Start here:** [docs/TrustNav_Project_Brief.pdf](docs/TrustNav_Project_Brief.pdf) (the project summary, 6 pages: what, how to read the console, results, what comes next, the team). The project report is [docs/TrustNav_Technical_Documentation.pdf](docs/TrustNav_Technical_Documentation.pdf) (44 pages, everything below in one file: abstract in English and French, contents with page numbers, the requirements, the approach and the choices, how it works, results, critical review, project management, three annexes). Both are built from this folder with `python3 docs/build_pdf.py`.
 
 **Demonstration on paper:** [docs/TrustNav_Demo_Guide.pdf](docs/TrustNav_Demo_Guide.pdf) is the demonstration on two pages, for a reader who cannot attend it: the link, the four screens worth opening and what each one proves (built with `python3 docs/build_guide.py`).
 
@@ -109,12 +109,18 @@ python -m pytest -q                      # 42 tests
 python -m trustnav_engine.evaluate       # train, choose fusion weights, print held-out metrics
 python -m trustnav_engine.export         # write out/*.json for the dashboard
 python -m trustnav_engine.stream --dry-run --speed 10   # live engine without sending
-python -m trustnav_engine.receiver --port /dev/ttyACM0 --no-model --dry-run   # a real u-blox receiver (NMEA/UBX over USB)
-python -m trustnav_engine.realcheck      # replay the public real-receiver recording, re-calibrate, overlay attacks
-                                         # (add --out ../paper/figures/realcheck.json ../dashboard/public/data/realcheck.json to refresh the paper and the site)
-python -m trustnav_engine.attackcheck    # replay the public recordings of real jamming and spoofing (downloads about 50 MB once)
-                                         # (add --out ../paper/figures/attackcheck.json ../dashboard/public/data/attackcheck.json)
+
+# a real u-blox receiver (NMEA/UBX over USB)
+python -m trustnav_engine.receiver --port /dev/ttyACM0 --no-model --dry-run
+
+# replay the public real-receiver recording, re-calibrate, overlay attacks
+python -m trustnav_engine.realcheck
+
+# replay the public recordings of real jamming and spoofing (downloads about 50 MB once)
+python -m trustnav_engine.attackcheck
 ```
+
+To refresh the figures of the paper and the data of the site, add `--out ../paper/figures/realcheck.json ../dashboard/public/data/realcheck.json` to `realcheck`, and the same two paths with `attackcheck.json` to `attackcheck`.
 
 To stream live to the dashboard, put the ingest URL and token in `engine/.env.local` (never committed) and run:
 
@@ -135,8 +141,6 @@ npm run dev
 
 Opening screen offers a narrated 60-second story of an attack (also `#replay?scenario=teleport_spoof&story=1`, or "Watch the attack" in the search). The map is tilted with 3D buildings; `T` opens the fleet timeline dock.
 
-**Live console** (v6): a fleet KPI strip (fleet trust, platforms, open incidents, positions refused and the worst lie refused); markers with a trust ring and score; a refused fix drawn hollow with a shield at the protected position, the dashed lie between them and its length; alert cards with sparklines, the response action and an acknowledge button; an operator playbook (what to do now) for any platform on hold; and **presentation mode** (`P`), where the camera visits every platform, incidents first, with a caption, for a jury or a wall screen.
-
 **Read at a glance** (v13): the Results and Method pages are no longer long documents. Each is a board with five tabs, and every tab is one screen with one message: an overview ("Every attack caught, 6 of 7 within one second", three readings and three before-and-after doors), each attack with its trust strip and what the response prevented, the real attacks, the real drive, and the full tables for whoever wants to check; on the Method side the pipeline in one picture, the fusion lab, the sixteen rules drawn with their weights, the comparison with what exists, and the fine print. Explanations longer than a sentence sit behind "How this was measured". The panels of the live console and the replay say less: shorter verdicts, measurements folded away, labels in sentence case, and what the model found unusual is drawn, not written: each measure with its value on a small track whose middle third is its normal range. On a small laptop or a projector (1280 by 720, 1366 by 768) the instruments over the map make room for each other; the tests measure it. A tab is part of the address (`#results?tab=real-attacks`), so it can be linked.
 
 **On recordings of real attacks** (v12): the Results page has a section that leaves the simulator: a phone captured by a real spoofer for 26.5 minutes (the reported error against the error handed on, the four detectors compared), a u-blox receiver under real jamming and beside the spoofer, and what the recordings changed in the engine. The earlier real-receiver section is now **On a real drive with no attack**. The Method page lists the sixteenth rule.
@@ -150,6 +154,8 @@ Opening screen offers a narrated 60-second story of an attack (also `#replay?sce
 **Narrated explainer** (v8): "Explain it to me, with voice" on the opening screen (also in the `?` guide and the ⌘K search) plays a three-minute, video-style walkthrough inside the console: nine scenes that move the camera, highlight one panel at a time, show a caption and speak it, in **ten languages** (English, French, German, Spanish, Italian, Portuguese, Hindi, Marathi, Telugu, Tamil). The voice is the browser's own speech synthesis, so it works offline; when the device has no voice for a language, the captions are timed instead (Marathi borrows the Hindi voice). Space pauses, the arrow keys step, Esc leaves.
 
 **Plain words** (v7): every platform panel opens with a verdict a non-expert understands ("Satellite signal is being faked: the receiver places the van 8.0 km from the road it is on; TrustNav is tracking it by its odometer"), derived from the evidence only, so it works on a real receiver. Evidence lines use everyday wording with the engineering term in brackets. `?` opens **How to read this screen**: the map legend, the panels, and the three things that go wrong, in one page.
+
+**Live console** (v6): a fleet KPI strip (fleet trust, platforms, open incidents, positions refused and the worst lie refused); markers with a trust ring and score; a refused fix drawn hollow with a shield at the protected position, the dashed lie between them and its length; alert cards with sparklines, the response action and an acknowledge button; an operator playbook (what to do now) for any platform on hold; and **presentation mode** (`P`), where the camera visits every platform, incidents first, with a caption, for a jury or a wall screen.
 
 Keyboard: `1`–`4` switch pages, `?` opens the guide, `⌘K` / `Ctrl K` opens the search, `J`/`K` step through platforms, `Esc` goes back, `F` follows the selected platform, `R` opens its incident report, `T` the fleet timeline, `P` presentation mode, `D` toggles dark mode, `Space` and the arrow keys drive the replay.
 
