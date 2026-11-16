@@ -24,4 +24,4 @@ Rules and model are combined by noisy-OR (either witness can raise the alarm); t
 
 **Next.** Plug in a real receiver (about 60 to 250 EUR), record hours of normal drives around Angers, re-calibrate, then run the raw radio recordings of real attacks (Jammertest 2023, TEXBAT) through a software receiver. See `ROADMAP.md`.
 
-**Team.** Group 2, MSc Cybersecurity & Data Science, ESAIP Angers: Karan Deshmukh, Sudheer Reddy Jogi, Niranjan Satheesh Thandassery, Venkata Pavan Kumar Sanam. Tutor: Sofiane Hamrioui.
+**Team.** Group 2, MSc Cybersecurity & Data Science, ESAIP Angers: Karan Deshmukh (project lead) and three team members.

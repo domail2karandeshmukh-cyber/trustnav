@@ -604,8 +604,8 @@ body.brief .figgrid {{ page-break-before: auto; }}
   </div>
   <div class="meta">
     <b>Group 2</b>, MSc Cybersecurity and Data Science, ESAIP Angers<br>
-    Karan Deshmukh, Sudheer Reddy Jogi, Niranjan Satheesh Thandassery, Venkata Pavan Kumar Sanam<br>
-    Tutor: Sofiane Hamrioui &nbsp;·&nbsp; Engine {engine} &nbsp;·&nbsp; {today}
+    Karan Deshmukh, project lead, with a team of four<br>
+    Engine {engine} &nbsp;·&nbsp; {today}
   </div>
 </div>
 {abstract}
