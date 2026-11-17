@@ -29,20 +29,20 @@ trustnav/
 |---|---|---|
 | `config.py` | 121 | **All** thresholds and weights in one place so a reviewer can question each one. Platform profiles (`ROAD_VEHICLE`: 60 m/s, 8 m/s², 90 °/s, 250 m jump; `SMALL_UAV`), `RuleSettings`, `FusionSettings`, `TrustBands`, `IncidentSettings` |
 | `geo.py` | 53 | Geodesy helpers: `haversine_m` (distance), `bearing_deg`, `offset`, `angle_diff_deg`, `LocalFrame` (lat/lon to metres) |
-| `routes.py` | 207 | `Route` class: a polyline the vehicle should follow, with `distance_to()` and `project()` (arc-length position, direction- and continuity-aware where the road doubles back). Road routes were computed with OSRM on OpenStreetMap data and stored in `data/routes.json`. Each route has one **role**: train, validation or held-out |
-| `simulator.py` | 269 | Deterministic synthetic observations (seeded). Normal driving with stops, corners and urban-canyon dips, plus attack overlays: `teleport`, `drift`, `signal`, `stealth_drift`, `osnma_forgery`, `jamming`, `drone_drift`. Every observation carries a ground-truth `attack` label. **Nothing is transmitted** |
+| `routes.py` | 207 | `Route` class: a polyline the vehicle should follow, with `distance_to()` and `project()` (arc-length position, direction- and continuity-aware where the road doubles back). Road routes were computed with OSRM on OpenStreetMap data and stored in `data/routes.json`. Each route has one **role**: train, validation, or held-out |
+| `simulator.py` | 269 | Deterministic synthetic observations (seeded). Normal driving with stops, corners, and urban-canyon dips, plus attack overlays: `teleport`, `drift`, `signal`, `stealth_drift`, `osnma_forgery`, `jamming`, `drone_drift`. Every observation carries a ground-truth `attack` label. **Nothing is transmitted** |
 | `scenarios.py` | 95 | Catalogue: `training_specs` (normal only), `validation_specs`, `heldout_specs` (the 10 demo scenarios), `FLEET_DEVICES` and `fleet_specs` (the 7-platform live demo) |
-| `features.py` | 295 | `FeatureExtractor.update(obs)`: 36 features over a 5-observation rolling window, plus context. `_time()` keeps the trusted clock: elapsed time is counted on the host clock when there is one, otherwise on receiver time while it runs forward, and the difference is reported as `time_jump_s`. `MODEL_FEATURES` is the 19 used by the model |
+| `features.py` | 295 | `FeatureExtractor.update(obs)`: 36 features over a 5-observation rolling window, plus context. `_time()` keeps the trusted clock: elapsed time is counted on the host clock when there's one, otherwise on receiver time while it runs forward, and the difference is reported as `time_jump_s`. `MODEL_FEATURES` is the 19 used by the model |
 | `rules.py` | 149 | `evaluate()`: the 16 rules, the last one `R_TIME_JUMP` (receiver time against the host clock or against its own count, critical). Returns reasons, rule risk, critical flag. `_severity()` scales 0.5 to 1.0 |
 | `model.py` | 193 | `TailModel` and `AnomalyModel`: Isolation Forest plus tail detector, calibration, `risk_from_p`, `explain()`, `save`/`load` |
 | `pipeline.py` | 268 | `trust_status`, `fuse()` (noisy-OR), `IncidentTracker`, and `Detector.process(obs)` which turns one observation into one scored frame, then asks the response layer what to hand on |
-| `safeguard.py` | 174 | **Response layer.** `Safeguard.update(frame, obs, clock)`: accept / hold / release logic, stepped on the trusted clock so skipped seconds do not shorten the distance, route-constrained dead reckoning from the odometer, rejoin tolerance, CONTINUE / VERIFY / ISOLATE actions |
+| `safeguard.py` | 174 | **Response layer.** `Safeguard.update(frame, obs, clock)`: accept / hold / release logic, stepped on the trusted clock so skipped seconds don't shorten the distance, route-constrained dead reckoning from the odometer, rejoin tolerance, CONTINUE / VERIFY / ISOLATE actions |
 | `receiver.py` | 428 | **Real receiver adapter.** NMEA (GGA, RMC, VTG, GSA, GSV) and UBX (NAV-PVT, NAV-CLOCK, NAV-STATUS, NAV-SAT, MON-HW) parsers, tolerant of a sentence glued to a binary frame; `EpochBuilder` folding one second into one observation (a missing satellite count stays unknown, a second without time is marked), serial port or log file input, `--no-model`, `--jsonl` |
 | `evaluate.py` | 259 | Train, pick fusion weights on validation routes, score held-out routes, compute precision, recall, F1, false-alarm rate, detection delay; `protection_report()` measures reported vs protected position error against ground truth |
 | `export.py` | 99 | Writes everything the dashboard needs to JSON |
 | `demo_feed.py` | 59 | Precomputes the 7-platform fleet with the real detector for the cloud demo |
 | `realcheck.py` | 301 | **Real drive, no attack.** Replays a recorded drive (default: the public u-blox ZED-F9K recording in `data/real/`, with its NovAtel SPAN reference) through the adapter and detector: rules alone, simulator model and C/N0+sats baseline on the whole drive; the model re-calibrated on the first part of the drive and tested on the rest; teleport, drift and jamming overlays (`RealOverlay`) on the test segment with detection delay and worst raw / protected error against the reference; the reference track is the route, its speed over ground the odometer. `--out` writes the results, with the drive as a polyline (`track_summary`), to `paper/figures/realcheck.json` and `dashboard/public/data/realcheck.json` |
-| `attackcheck.py` | 538 | **Real attacks.** Replays the VAARA recordings of Jammertest 2024 (a u-blox receiver and a phone in a car, under real jamming and spoofing). `fetch()` downloads the six files on demand with a SHA-256 check into a git-ignored folder; `ublox_observations()` and `phone_observations()` turn the logs into observations (the phone's lines carry its own system clock as `host_t`); `reference()` is the receiver the spoofer did not capture; `phone_session()` compares the rules as first published, with an odometer, with the re-calibrated model and with the time rule, and measures what the response layer hands on; `ublox_session()` counts jamming exposures alerted and false alerts by signal state. `--out` writes `paper/figures/attackcheck.json` and `dashboard/public/data/attackcheck.json` |
+| `attackcheck.py` | 538 | **Real attacks.** Replays the VAARA recordings of Jammertest 2024 (a u-blox receiver and a phone in a car, under real jamming and spoofing). `fetch()` downloads the six files on demand with a SHA-256 check into a git-ignored folder; `ublox_observations()` and `phone_observations()` turn the logs into observations (the phone's lines carry its own system clock as `host_t`); `reference()` is the receiver the spoofer didn't capture; `phone_session()` compares the rules as first published, with an odometer, with the re-calibrated model and with the time rule, and measures what the response layer hands on; `ublox_session()` counts jamming exposures alerted and false alerts by signal state. `--out` writes `paper/figures/attackcheck.json` and `dashboard/public/data/attackcheck.json` |
 | `phone.py` | 193 | **Phone bridge.** Pulls the fixes the `/phone` page stored in the cloud (`phone_pull`), maps them to observations (signal inputs stay None, the phone's real speed stands in for the odometer), applies the attack overlay chosen on the phone (`Overlay`: teleport 8 km east, drift 0.7 m/s, jam = no fix), scores them with `Detector` and posts frames as a `receiver` run. `--route`, `--model`, `--from-start`, `--dry-run` |
 | `stream.py` | 103 | Live runner: one observation per second per device, posts to the ingest endpoint. `--dry-run`, `--speed` |
 
@@ -77,17 +77,17 @@ action = CONTINUE if acceptable else ISOLATE if (critical or trust < 25) else VE
 
 `test_engine.py` (9): simulation is deterministic; attack labels start on time; noisy-OR is stronger than either witness (40 and 40 give 64); missing ML falls back to rules; a critical rule pins the risk floor; a rule is silent just below its threshold; severity scales with the exceedance; OSNMA unknown is never a failure; trust bands map correctly.
 
-`test_safeguard.py` (9): a trusted fix passes through; a spoofed fix is held and the estimate follows the odometer; a hold does not release while the fix is still far away, not even after a long clean streak; a long clean streak does release a fix that is merely drifted (within ten times the rejoin tolerance), reporting the discrepancy; a clean fix that rejoins releases the hold; no fix still gives a position; action bands; route projection picks the right leg where the road doubles back; the route odometer tracks a jammed vehicle within 2 m over a minute.
+`test_safeguard.py` (9): a trusted fix passes through; a spoofed fix is held and the estimate follows the odometer; a hold doesn't release while the fix is still far away, not even after a long clean streak; a long clean streak does release a fix that is merely drifted (within ten times the rejoin tolerance), reporting the discrepancy; a clean fix that rejoins releases the hold; no fix still gives a position; action bands; route projection picks the right leg where the road doubles back; the route odometer tracks a jammed vehicle within 2 m over a minute.
 
 `test_phone.py` (5): a phone row becomes an observation with the signal inputs missing and the real speed as odometer; a no-fix row has no position; the teleport, drift and jam overlays move or remove the fix as specified; a steady walk is trusted and a teleport is caught in the same second (position-jump rule, ISOLATE, hold) with the protected estimate staying within 30 m of the real walk; a jam overlay still yields a dead-reckoned estimate.
 
 `test_realcheck.py` (3): the real recording parses into one observation per second with primary-band C/N0; the rules raise nothing on its opening minutes and the track summary labels the fit, calibration and test segments in order; the jam overlay degrades C/N0 then removes the fix.
 
-`test_receiver.py` (8): NMEA sentences parse; two epochs become two observations; a no-fix epoch has no position; UBX frames and the five messages parse (jamming indicator, clock, satellites, PVT); the live detector scores receiver observations; rules-only mode has no model risk; a sentence glued to a binary frame is still read; the satellite count stays unknown when the sentence that carries it is dropped.
+`test_receiver.py` (8): NMEA sentences parse; two epochs become two observations; a no-fix epoch has no position; UBX frames and the five messages parse (jamming indicator, clock, satellites, PVT); the live detector scores receiver observations; rules-only mode has no model risk; a sentence glued to a binary frame is still read; the satellite count stays unknown when the sentence that carries it's dropped.
 
-`test_time.py` (5): receiver time set back is critical for as long as it lasts against the host clock; time running backwards is caught without a host clock, and a gap is not; a step of the host clock is not blamed on the receiver; the position-jump limit scales with the time since the last fix; a hold is stepped on the clock, so skipped seconds do not shorten the distance.
+`test_time.py` (5): receiver time set back is critical for as long as it lasts against the host clock; time running backwards is caught without a host clock, and a gap isn't; a step of the host clock isn't blamed on the receiver; the position-jump limit scales with the time since the last fix; a hold is stepped on the clock, so skipped seconds don't shorten the distance.
 
-`test_attackcheck.py` (3): the phone's log lines carry the phone's own clock; a two-hertz log is thinned to one observation a second; seconds are sorted into test, no-test, margin and clean. The recordings themselves are not needed to run the tests.
+`test_attackcheck.py` (3): the phone's log lines carry the phone's own clock; a two-hertz log is thinned to one observation a second; seconds are sorted into test, no-test, margin and clean. The recordings themselves aren't needed to run the tests.
 
 ## Supabase (`supabase/`)
 
@@ -113,7 +113,7 @@ Stack: Next.js 15, React 19, TypeScript, MapLibre GL, supabase-js, self-hosted B
 
 | File | What it does |
 |---|---|
-| `useFleet.ts` | The data hook. Source is `connecting`, `live` (Supabase realtime) or `loop` (recorded demo). Returns devices, frames, incidents and the clock |
+| `useFleet.ts` | The data hook. Source is `connecting`, `live` (Supabase realtime) or `loop` (recorded demo). Returns devices, frames, incidents, and the clock |
 | `types.ts` | Shared types (`Frame`, `Incident`, `ReplayData`) |
 | `supabase.ts` | Read-only client using the public key |
 | `story.ts` | The narrated story beats and camera moves |
@@ -123,7 +123,7 @@ Stack: Next.js 15, React 19, TypeScript, MapLibre GL, supabase-js, self-hosted B
 | `useVoice.ts` | `useVoicePref` (voice on/off, remembered) and `useNarrate` (reads a caption aloud when it changes) for the story and presentation captions |
 | `speech.ts` | Browser speech synthesis: voice choice per language (natural voices first, Hindi as the fallback for Marathi), speak with a watchdog, stop |
 | `plain.ts` | The plain-language layer: `plainVerdict` (one or two sentences per platform from the evidence codes and the response), `plainFleet` (the fleet headline) and `gloss` (engineering terms to everyday wording) |
-| `format.ts` | Number, time and status formatting |
+| `format.ts` | Number, time, and status formatting |
 | `useJSON.ts` | Loads one static JSON file from `/data` (the two real-recording result files) |
 | `useTheme.ts`, `useShortcuts.ts`, `useWide.ts` | Dark mode, keyboard shortcuts, responsive layout |
 
@@ -131,7 +131,7 @@ Stack: Next.js 15, React 19, TypeScript, MapLibre GL, supabase-js, self-hosted B
 
 | File | What it does |
 |---|---|
-| `Console.tsx` | The shell: rail navigation, hash routing, command palette commands, shortcuts, hero and tour |
+| `Console.tsx` | The shell: rail navigation, hash routing, command palette commands, shortcuts, hero, and tour |
 | `LiveView.tsx` | Live page: fleet list, device detail (with the response line and the operator playbook), fleet KPI strip, alert feed with sparklines, actions and acknowledgements, status strip, toasts, timeline dock, presentation mode |
 | `MapView.tsx` | MapLibre map: light/dark styles, 3D buildings, markers with a trust ring and score (hollow when the fix is refused), smooth gliding, fading trails, follow camera, the protected path, shield markers with the size of the refused lie and the dashed link to the reported fix, framing of a whole lie on selection |
 | `ReplayView.tsx` | Scenario replay with scrubber, ghost "real position", story mode |
@@ -144,7 +144,7 @@ Stack: Next.js 15, React 19, TypeScript, MapLibre GL, supabase-js, self-hosted B
 | `HeroScene.tsx` | The opening scene on a canvas: the van on its recorded route, the teleport that throws the reported position 8 km away, the trust gauge; geometry in `lib/hero-path.ts` (from the teleport scenario); a still frame under reduced motion |
 | `Instruments.tsx` | Trust tape, trust chart, gauges, the evidence list (a rule in one sentence; the model's unusual measures as rows, each with its value on a track of its normal range), the OSNMA line and the response line (accepted / held / isolated, with what to do) |
 | `Report.tsx` | Per-device incident report (print to PDF) |
-| `Guide.tsx` | "How to read this screen": legend, panels and the three attacks in plain words (`?`) |
+| `Guide.tsx` | "How to read this screen": legend, panels, and the three attacks in plain words (`?`) |
 | `Explainer.tsx` | The narrated explainer: scene playback, spotlight on the target panel, caption, language menu, keyboard; drives the live view through `ExplainApi` (fit, select a trusted or a refused platform, open alerts) |
 | `CommandPalette.tsx`, `Toasts.tsx`, `Hero.tsx`, `Tour.tsx`, `Icons.tsx` | Search, notifications, opening screen, guided tour, icons |
 
@@ -156,7 +156,7 @@ Stack: Next.js 15, React 19, TypeScript, MapLibre GL, supabase-js, self-hosted B
 
 - **GitHub**: this repository (`main`).
 - **Vercel**: builds the `dashboard/` folder on every push to `main` and serves https://trustnav.vercel.app.
-- **Supabase**: hosts the database, realtime and the ingest function.
+- **Supabase**: hosts the database, realtime, and the ingest function.
 - **Secrets**: the ingest token lives only in `engine/.env.local` and in the database as a hash.
 
 ## How to run a real receiver (Phase 2)

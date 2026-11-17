@@ -2,10 +2,10 @@
 
 | Term | Meaning |
 |---|---|
-| GNSS | Global Navigation Satellite System: GPS, Galileo, GLONASS and BeiDou together |
+| GNSS | Global Navigation Satellite System: GPS, Galileo, GLONASS, and BeiDou together |
 | Receiver, fix | The device that computes a position from the satellite signals. A fix is one computed position |
 | Jamming | Radio noise that drowns the satellite signals: the receiver loses its position |
-| Spoofing | False signals that imitate the satellites: the receiver computes a wrong position and does not know it |
+| Spoofing | False signals that imitate the satellites: the receiver computes a wrong position and doesn't know it |
 | Relay (meaconing) | Genuine signals recorded and sent again: the data stays authentic while the position is wrong |
 | OSNMA | Open Service Navigation Message Authentication: the digital signature Galileo adds to its navigation data |
 | C/N0 | Carrier-to-noise density, in dB-Hz: how strong each satellite's signal is at the receiver |
@@ -13,7 +13,7 @@
 | Pseudorange residual | How far the measured distance to a satellite is from the distance the computed position implies |
 | NMEA, UBX | The text format and the u-blox binary format in which receivers output their data |
 | Odometer | Distance or speed measured by the vehicle itself, independent of the satellites |
-| Dead reckoning | Estimating the position from the last trusted one, the speed and the direction |
+| Dead reckoning | Estimating the position from the last trusted one, the speed, and the direction |
 | Feature | A number computed from the observations (speed, jump, distance from the route, and so on). The detector uses 36 |
 | Rule | A check against a named physical limit. There are sixteen |
 | Isolation Forest | An unsupervised model that scores how easily an observation is separated from normal ones |

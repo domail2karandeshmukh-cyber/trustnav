@@ -16,7 +16,7 @@ Three parts, each in its own folder:
 |---|---|---|
 | Engine | `engine/` | Scores each observation and decides what to alert on |
 | Database and API | `supabase/` | Stores results, secures the write path, serves them live |
-| Dashboard | `dashboard/` | Shows the fleet, the map, the reasons and the history |
+| Dashboard | `dashboard/` | Shows the fleet, the map, the reasons, and the history |
 
 ## Step 1: An observation arrives (once per second)
 
@@ -29,14 +29,14 @@ A GNSS receiver reports, every second:
 - pseudorange residuals: how well the measurements agree with the computed position
 - receiver clock bias and drift
 - a jamming indicator (0 to 255)
-- **Galileo OSNMA status**: verified, failed or lost
+- **Galileo OSNMA status**: verified, failed, or lost
 - optional inertial speed (from an IMU)
 
 These come from three sources, all producing the same observation dictionary:
 
 - the **simulator** (`simulator.py`): repeatable synthetic observations with or without attacks; every number in the results comes from it;
 - a **real receiver** on a serial port or a log (`receiver.py`): NMEA and u-blox UBX messages folded into one observation per second;
-- a **phone** (`phone.py` with the `/phone` page of the console): the phone's own fixes, position, speed, heading and accuracy, sent to the cloud once a second and pulled by the engine on a laptop. A phone gives no per-satellite C/N0, clock or OSNMA, so those inputs stay missing and the physics and route rules carry the score; the phone's real speed stands in for the odometer. The phone page can overlay a teleport, a slow drift or jamming on the real stream, in software only, so detection and the response layer can be shown on real data.
+- a **phone** (`phone.py` with the `/phone` page of the console): the phone's own fixes, position, speed, heading and accuracy, sent to the cloud once a second and pulled by the engine on a laptop. A phone gives no per-satellite C/N0, clock, or OSNMA, so those inputs stay missing and the physics and route rules carry the score; the phone's real speed stands in for the odometer. The phone page can overlay a teleport, a slow drift, or jamming on the real stream, in software only, so detection and the response layer can be shown on real data.
 
 ## Step 2: Turn the observation into features (`features.py`)
 
@@ -69,14 +69,14 @@ Sixteen deterministic checks. Each one compares a feature with a named threshold
 - Each rule has a **weight** and a **severity**. Severity is 0.5 at the threshold and rises to 1.0 at three times the threshold, so a small exceedance counts less than a huge one.
 - The rules' contributions are combined with a **noisy-OR**: independent evidence reinforces itself (`risk = 1 − ∏(1 − contribution)`).
 - A **critical** rule (a jump over 4× the limit, an OSNMA failure, or a time jump) sets a **floor of 70** on the risk, so a clear forgery can never be averaged away.
-- `R_TIME_JUMP` was added in version 2.2, after a recording of a real spoofer showed what the other fifteen could not see (Step 9). Receiver time is treated as a measurement: it is compared with the clock of the host the receiver is plugged into (a phone, a gateway), against a slowly adapting baseline, and a difference of more than 5 s is critical. Without a host clock the rule still fires when receiver time runs backwards against its own one-per-second count. Elapsed time everywhere else (speeds, accelerations, dead reckoning) is counted on that trusted clock, never on the receiver's time alone, and the position-jump limit scales with the time since the last fix.
+- `R_TIME_JUMP` was added in version 2.2, after a recording of a real spoofer showed what the other fifteen couldn't see (Step 9). Receiver time is treated as a measurement: it's compared with the clock of the host the receiver is plugged into (a phone, a gateway), against a slowly adapting baseline, and a difference of more than 5 s is critical. Without a host clock the rule still fires when receiver time runs backwards against its own one-per-second count. Elapsed time everywhere else (speeds, accelerations, dead reckoning) is counted on that trusted clock, never on the receiver's time alone, and the position-jump limit scales with the time since the last fix.
 - Thresholds sit where something becomes *physically impossible*, not where an attack becomes likely. That keeps false alarms low, at the cost of missing slow attacks. The model layer covers those.
 
 Output: a list of reasons, each with the measured value and threshold, plus a rule risk from 0 to 100.
 
 ## Step 3b: The machine-learning model (`model.py`)
 
-Two detectors, trained **only on normal driving** (it never sees an attack, so it cannot just memorise attack shapes):
+Two detectors, trained **only on normal driving** (it never sees an attack, so it can't just memorise attack shapes):
 
 1. **Isolation Forest** (scikit-learn, 300 trees). Finds unusual *combinations* of inputs.
 2. **Tail detector**. Finds a *single* extreme input, such as a position 90 m off the road while all signals look clean. It can say exactly which input was improbable.
@@ -126,10 +126,10 @@ Detection alone leaves the operator looking at a lie, so the score drives a resp
 | Trust | Mode | What downstream software receives | Action for the operator |
 |---|---|---|---|
 | 50 or more, no critical rule | **accept** | the GNSS fix, unchanged | CONTINUE |
-| below 50, or no fix | **hold** | an estimate: the last trusted fix advanced by the **odometer speed along the planned route** (a spoofer cannot touch the odometer); without a route, along the last trusted heading | VERIFY (confirm by other means before acting) |
-| below 25, or a critical rule (OSNMA failed, 4× jump) | **hold** | the same estimate | ISOLATE (do not act on this device; a drone holds or returns on inertial navigation, a driver is contacted) |
+| below 50, or no fix | **hold** | an estimate: the last trusted fix advanced by the **odometer speed along the planned route** (a spoofer can't touch the odometer); without a route, along the last trusted heading | VERIFY (confirm by other means before acting) |
+| below 25, or a critical rule (OSNMA failed, 4× jump) | **hold** | the same estimate | ISOLATE (don't act on this device; a drone holds or returns on inertial navigation, a driver is contacted) |
 
-A hold ends only after **five clean seconds and a fix that rejoins the estimate** (within 60 m plus 3 % of the distance travelled while held), so a spoofer cannot end the hold by looking clean while still far away. After 60 clean seconds it releases with a tolerance ten times looser and reports the discrepancy, because an odometer estimate drifts too; a fix that is still kilometres away stays refused (found on a real recording: without this bound, a teleported fix that kept moving consistently was taken back after a minute).
+A hold ends only after **five clean seconds and a fix that rejoins the estimate** (within 60 m plus 3 % of the distance travelled while held), so a spoofer can't end the hold by looking clean while still far away. After 60 clean seconds it releases with a tolerance ten times looser and reports the discrepancy, because an odometer estimate drifts too; a fix that is still kilometres away stays refused (found on a real recording: without this bound, a teleported fix that kept moving consistently was taken back after a minute).
 
 Where the route doubles back on itself (the same street in both directions), `Route.project()` uses the direction of travel and continuity to pick the right leg, otherwise the estimate would advance the wrong way.
 
@@ -147,13 +147,13 @@ The function is the only write path. It checks an `x-trustnav-token` header agai
 
 ### A real receiver instead of the simulator (`receiver.py`)
 
-`python -m trustnav_engine.receiver --port /dev/ttyACM0` reads a GNSS receiver over USB (NMEA sentences GGA, RMC, VTG, GSA, GSV, and u-blox UBX messages NAV-PVT, NAV-CLOCK, NAV-STATUS, NAV-SAT, MON-HW), folds each second into the same observation dictionary the simulator produces, runs the same `Detector`, and posts to the same ingest endpoint. Inputs the receiver does not provide (OSNMA, inertial speed) stay `None` and the engine's `missing_*` flags take over. `--file` replays a saved log, `--jsonl` records everything for later calibration, and `--no-model` runs rules only until the model has been re-calibrated on that receiver's own normal drives. The receiver only listens; nothing is transmitted.
+`python -m trustnav_engine.receiver --port /dev/ttyACM0` reads a GNSS receiver over USB (NMEA sentences GGA, RMC, VTG, GSA, GSV, and u-blox UBX messages NAV-PVT, NAV-CLOCK, NAV-STATUS, NAV-SAT, MON-HW), folds each second into the same observation dictionary the simulator produces, runs the same `Detector`, and posts to the same ingest endpoint. Inputs the receiver doesn't provide (OSNMA, inertial speed) stay `None` and the engine's `missing_*` flags take over. `--file` replays a saved log, `--jsonl` records everything for later calibration, and `--no-model` runs rules only until the model has been re-calibrated on that receiver's own normal drives. The receiver only listens; nothing is transmitted.
 
 ## Step 7: Storage and security (`supabase/migrations`)
 
 Tables: `devices`, `runs`, `frames` (one row per scored second, including the `response` JSON), `incidents`, `ingest_tokens`, `presenter_passcodes`, plus `demo_frames` and `demo_incident_events` for the built-in demo.
 
-- **Row-level security**: everyone can *read* devices, runs, frames and incidents. Nobody can write except through the ingest function (service role).
+- **Row-level security**: everyone can *read* devices, runs, frames, and incidents. Nobody can write except through the ingest function (service role).
 - **Demo feed**: a `pg_cron` job (`demo_tick`) replays a precomputed fleet once per second, so the live demo works with no laptop attached. Starting and stopping it needs a **presenter passcode** (bcrypt-hashed, rate-limited after failed attempts).
 - Old frames are pruned daily, and cron logs are trimmed every 10 minutes.
 
@@ -163,7 +163,7 @@ Tables: `devices`, `runs`, `frames` (one row per scored second, including the `r
 
 | View | What it shows |
 |---|---|
-| **Live** | 3D map of the fleet, trust per vehicle, alert feed, device detail with reasons and the response (accepted / held / isolated), timeline dock, report export |
+| **Live** | 3D map of the fleet, trust per vehicle, alert feed, device detail with reasons, and the response (accepted / held / isolated), timeline dock, report export |
 | **Replay** | Ten recorded scenarios with a scrubber, the real path, the protected path the response layer handed on, and a narrated story mode |
 | **Results** | Five tabs, one screen each: an overview, each attack with what the response prevented, the real attacks, the real drive, and the full tables |
 | **Method** | Five tabs: the pipeline in one picture, the fusion lab, the sixteen rules, the comparison with what exists, the fine print |
